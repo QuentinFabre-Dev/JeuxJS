@@ -1,0 +1,100 @@
+#Canvas {
+    border: 1px solid black;
+    background-image: url("images/map.png");
+    background-size: cover;
+    display: block;
+    margin: auto;
+  }
+
+  body{
+    background-image: url('https://images8.alphacoders.com/950/950232.jpg');
+
+  }
+
+  @font-face {
+    font-family: 'police';
+    src: url('police.otf') format('truetype');
+    font-weight: normal;
+    font-style: normal;
+    }
+
+  ul {
+    list-style-type: none;
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+    background-color: rgba(21, 21, 21,0);
+    background-repeat: no-repeat;
+    background-size: cover;
+    margin-bottom: 20px;
+  }
+  
+  li {
+    float: left;
+  }
+  
+  li a {
+    font-style: Arial,Sans-Serif;
+    display: block;
+    color: white;
+    text-align: center;
+    padding: 14px 16px;
+    text-decoration: none;
+  }
+  
+  li a:hover:not(.active) {
+    background-color: #111;
+  }
+  
+  .active {
+    background-color: rgb(44, 44, 44);
+  }
+  
+  h1
+  {
+    font-family: police;
+    font-size: 7rem;
+    color: rgb(128, 11, 11);
+  }
+
+
+  .myButton {
+    display: block;
+    box-shadow:inset 0px 34px 0px -15px #b54b3a;
+    background-color:#a73f2d;
+    border:1px solid #241d13;
+    cursor:pointer;
+    color:#ffffff;
+    font-family:Arial;
+    font-size:15px;
+    font-weight:bold;
+    padding:19px 33px;
+    text-decoration:none;
+    text-shadow:0px -1px 0px #7a2a1d;
+    text-align: center;
+    width: 30%;
+    margin: auto;
+    margin-top: 30px;
+  }
+  .myButton:hover,a:hover {
+    background-color:#b34332;
+    color: #ffffff;
+
+  }
+  .myButton:active {
+    position:relative;
+    top:1px;
+  }
+  
+  .title, .regles{
+    text-align: center;
+  }
+  .tout
+  {
+    padding: 20px 30px;
+  }
+
+  ol li
+  {
+    color: white;
+  }
