@@ -1,12 +1,12 @@
 import { MOCK_FINDINGS_POOL } from '../data/mockFindings.js';
 
 /**
- * Génère un identifiant unique simple.
+ * Simple unique id generator.
  */
 const uid = () => Math.random().toString(36).slice(2, 10);
 
 /**
- * Mélange un tableau (Fisher-Yates).
+ * Fisher-Yates shuffle.
  */
 const shuffle = (arr) => {
   const copy = [...arr];
@@ -18,8 +18,8 @@ const shuffle = (arr) => {
 };
 
 /**
- * Petit jitter aléatoire sur le score de confiance pour
- * que deux runs ne donnent pas exactement les mêmes résultats.
+ * Adds a small random jitter to the confidence score so that two
+ * runs never produce exactly the same values.
  */
 const jitterConfidence = (base) => {
   const delta = (Math.random() - 0.5) * 0.06;
@@ -27,16 +27,14 @@ const jitterConfidence = (base) => {
 };
 
 /**
- * Sélectionne les findings à émettre en fonction des skills choisis.
- * Le type de document influence légèrement la confiance (boost contextuel)
- * sans dupliquer les findings — chaque phrase n'est analysée qu'une fois,
- * ce qui permet le mapping 1:1 avec la preview du document.
+ * Builds the run plan based on the selected skills.
+ * The document type slightly boosts the confidence of the most
+ * relevant skill (without duplicating findings, so the 1:1 mapping
+ * with the document preview is preserved).
  */
 const buildRunPlan = ({ skills, docType }) => {
   const filtered = MOCK_FINDINGS_POOL.filter((f) => skills.includes(f.skill));
 
-  // Boost contextuel : on augmente la confiance des findings dont le skill
-  // est particulièrement pertinent pour le type de document choisi.
   const boostMap = {
     email: 'tone',
     procedure: 'consistency',
@@ -57,16 +55,16 @@ const buildRunPlan = ({ skills, docType }) => {
 };
 
 /**
- * Service principal : simule un appel d'analyse "streaming".
+ * Main service: simulates a "streaming" analysis call.
  *
  * @param {Object}   options
- * @param {Object}   options.file        Fichier uploadé (mocké)
- * @param {string[]} options.skills      Liste d'identifiants de skills
- * @param {string}   options.docType     Identifiant du type de document
- * @param {Function} options.onFinding   Callback à chaque finding émis
- * @param {Function} options.onProgress  Callback de progression (0..1)
- * @param {Function} options.onComplete  Callback de fin (résumé)
- * @param {AbortSignal} [options.signal] Pour annuler l'analyse
+ * @param {Object}   options.file        Uploaded file (mocked)
+ * @param {string[]} options.skills      Enabled skill ids
+ * @param {string}   options.docType     Document type id
+ * @param {Function} options.onFinding   Callback invoked for each finding
+ * @param {Function} options.onProgress  Progress callback (0..1)
+ * @param {Function} options.onComplete  Completion callback (summary)
+ * @param {AbortSignal} [options.signal] Cancellation signal
  *
  * @returns {Promise<void>}
  */
@@ -91,7 +89,7 @@ export const runMockAnalysis = ({
       return;
     }
 
-    // Petit délai initial pour simuler "préparation du modèle"
+    // Small initial delay to simulate "model warming up".
     const initialDelay = 600;
 
     const emitNext = () => {
@@ -113,7 +111,7 @@ export const runMockAnalysis = ({
       index += 1;
       onProgress?.(index / total);
 
-      // Délai aléatoire entre 250 et 850 ms entre 2 findings
+      // Random delay between 250 and 850 ms between two findings.
       const nextDelay = 250 + Math.random() * 600;
       setTimeout(emitNext, nextDelay);
     };
@@ -123,8 +121,8 @@ export const runMockAnalysis = ({
 };
 
 /**
- * Calcule un score global du document (0-100) à partir des findings.
- * Les findings de priorité élevée pèsent plus lourd.
+ * Computes a global document score (0-100) from a list of findings.
+ * High-priority findings weigh more than low-priority ones.
  */
 export const computeDocumentScore = (findings) => {
   if (!findings || findings.length === 0) return 100;
@@ -135,7 +133,7 @@ export const computeDocumentScore = (findings) => {
     0
   );
 
-  // On part de 100 et on retire la pénalité, plafonnée à 60.
+  // Start from 100, subtract the penalty, clamp at 40 minimum.
   const score = Math.max(40, 100 - Math.min(penalty, 60));
   return Math.round(score);
 };

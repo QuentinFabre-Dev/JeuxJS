@@ -3,6 +3,10 @@ import { PRIORITIES, SKILL_STYLES, SKILLS } from '../data/constants.js';
 
 const skillLabel = (id) => SKILLS.find((s) => s.id === id)?.label ?? id;
 
+/**
+ * Compact "table row" style finding entry.
+ * Clickable, with a selected state that ties it to the preview.
+ */
 export default function FindingCard({ finding, isSelected, onClick }) {
   const priority = PRIORITIES[finding.priority];
   const confidencePct = Math.round(finding.confidence * 100);
@@ -20,63 +24,72 @@ export default function FindingCard({ finding, isSelected, onClick }) {
         }
       }}
       className={[
-        'card p-5 animate-fade-in-up cursor-pointer transition-all scroll-mt-4',
+        'relative card animate-fade-in-up cursor-pointer transition-all scroll-mt-4',
         'focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-400',
+        'flex items-stretch overflow-hidden',
         isSelected
-          ? 'ring-2 ring-brand-400 shadow-card -translate-y-0.5'
-          : 'hover:shadow-card hover:-translate-y-0.5 hover:border-slate-300/80',
+          ? 'ring-2 ring-brand-500 shadow-card'
+          : 'hover:shadow-card hover:border-slate-300/80',
       ].join(' ')}
     >
-      {/* Header */}
-      <header className="flex flex-wrap items-center gap-2 mb-3">
-        <span className={`chip ${SKILL_STYLES[finding.skill]}`}>
-          {skillLabel(finding.skill)}
-        </span>
-        <span className={`chip ${priority.classes}`}>
-          <span className={`h-1.5 w-1.5 rounded-full ${priority.dot}`} />
-          Priorité {priority.label.toLowerCase()}
-        </span>
-        <span className="chip bg-slate-50 text-slate-600 ring-1 ring-slate-200">
-          <FileText className="h-3 w-3" />
-          Page {finding.page}
-        </span>
-        <span className="ml-auto text-xs text-slate-500 tabular-nums">
-          Confiance ·{' '}
-          <span className="font-medium text-slate-700">{confidencePct}%</span>
-        </span>
-      </header>
+      {/* Priority rail */}
+      <span
+        className={`w-1 shrink-0 ${priority.bar}`}
+        aria-hidden
+      />
 
-      {/* Original */}
-      <div className="rounded-xl bg-slate-50/80 ring-1 ring-slate-100 p-3.5">
-        <p className="text-[11px] font-medium uppercase tracking-wide text-slate-400 mb-1">
-          Phrase originale
-        </p>
-        <p className="text-sm text-slate-800 leading-relaxed">
-          {finding.original}
-        </p>
+      <div className="flex-1 min-w-0 p-3.5">
+        {/* Meta line */}
+        <header className="flex flex-wrap items-center gap-2 mb-2">
+          <span className={`chip ${SKILL_STYLES[finding.skill]}`}>
+            {skillLabel(finding.skill)}
+          </span>
+          <span className={`chip ${priority.classes}`}>
+            <span className={`h-1.5 w-1.5 rounded-full ${priority.dot}`} />
+            {priority.label}
+          </span>
+          <span className="chip bg-slate-50 text-slate-600 ring-1 ring-slate-200">
+            <FileText className="h-3 w-3" />
+            p. {finding.page}
+          </span>
+          <span className="ml-auto text-[11px] text-slate-500 tabular-nums">
+            Confidence ·{' '}
+            <span className="font-semibold text-slate-700">{confidencePct}%</span>
+          </span>
+        </header>
+
+        {/* Original → Suggestion (two-column layout) */}
+        <div className="grid grid-cols-1 md:grid-cols-[1fr_auto_1fr] items-start gap-2">
+          <div className="rounded-lg bg-slate-50/80 ring-1 ring-slate-100 px-3 py-2">
+            <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400 mb-0.5">
+              Original
+            </p>
+            <p className="text-[13px] text-slate-800 leading-snug">
+              {finding.original}
+            </p>
+          </div>
+
+          <div className="hidden md:flex items-center justify-center pt-5">
+            <ArrowRight className="h-4 w-4 text-slate-300" />
+          </div>
+
+          <div className="rounded-lg bg-emerald-50/70 ring-1 ring-emerald-100 px-3 py-2">
+            <p className="text-[10px] font-semibold uppercase tracking-wide text-emerald-700/80 mb-0.5">
+              Suggestion
+            </p>
+            <p className="text-[13px] text-emerald-900 leading-snug">
+              {finding.suggestion}
+            </p>
+          </div>
+        </div>
+
+        {finding.explanation && (
+          <p className="mt-2 text-[11px] text-slate-500 leading-snug">
+            <span className="font-semibold text-slate-600">Why:</span>{' '}
+            {finding.explanation}
+          </p>
+        )}
       </div>
-
-      {/* Arrow */}
-      <div className="flex items-center justify-center my-2">
-        <ArrowRight className="h-4 w-4 text-slate-300" />
-      </div>
-
-      {/* Suggestion */}
-      <div className="rounded-xl bg-emerald-50/60 ring-1 ring-emerald-100 p-3.5">
-        <p className="text-[11px] font-medium uppercase tracking-wide text-emerald-700/80 mb-1">
-          Suggestion
-        </p>
-        <p className="text-sm text-emerald-900 leading-relaxed">
-          {finding.suggestion}
-        </p>
-      </div>
-
-      {finding.explanation && (
-        <p className="mt-3 text-xs text-slate-500 leading-relaxed">
-          <span className="font-medium text-slate-600">Explication :</span>{' '}
-          {finding.explanation}
-        </p>
-      )}
     </article>
   );
 }

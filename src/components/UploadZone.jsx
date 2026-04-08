@@ -3,7 +3,7 @@ import { UploadCloud, FileText, X } from 'lucide-react';
 
 const formatBytes = (bytes) => {
   if (!bytes) return '';
-  const units = ['o', 'Ko', 'Mo', 'Go'];
+  const units = ['B', 'KB', 'MB', 'GB'];
   const i = Math.floor(Math.log(bytes) / Math.log(1024));
   return `${(bytes / Math.pow(1024, i)).toFixed(1)} ${units[i]}`;
 };
@@ -33,14 +33,14 @@ export default function UploadZone({ file, onFileChange }) {
             {file.name}
           </p>
           <p className="text-xs text-slate-500 mt-0.5">
-            {formatBytes(file.size)} · prêt à être analysé
+            {formatBytes(file.size)} · ready to analyze
           </p>
         </div>
         <button
           type="button"
           onClick={() => onFileChange(null)}
           className="btn-ghost !px-2.5"
-          aria-label="Retirer le fichier"
+          aria-label="Remove file"
         >
           <X className="h-4 w-4" />
         </button>
@@ -64,11 +64,11 @@ export default function UploadZone({ file, onFileChange }) {
           <UploadCloud className="h-7 w-7 text-brand-600" />
         </div>
         <p className="text-sm font-medium text-slate-900">
-          {isDragActive ? 'Déposez le fichier ici' : 'Glissez-déposez un document'}
+          {isDragActive ? 'Drop the file here' : 'Drag & drop a document'}
         </p>
         <p className="text-xs text-slate-500 mt-1">
-          ou <span className="text-brand-600 font-medium">parcourir</span> ·
-          PDF, DOCX, TXT (max 20 Mo)
+          or <span className="text-brand-600 font-medium">browse</span> ·
+          PDF, DOCX, TXT (max 20 MB)
         </p>
       </div>
     </div>

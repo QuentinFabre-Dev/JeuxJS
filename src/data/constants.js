@@ -1,69 +1,67 @@
-// Catégories d'analyse ("skills")
+// Analysis "skills"
 export const SKILLS = [
   {
     id: 'grammar',
-    label: 'Grammaire',
-    description: 'Détection des erreurs de structure grammaticale',
-    color: 'violet',
+    label: 'Grammar',
+    description: 'Detects grammatical structure errors and agreement issues.',
   },
   {
     id: 'spelling',
-    label: 'Orthographe',
-    description: 'Repérage des fautes d\u2019orthographe et typos',
-    color: 'rose',
+    label: 'Spelling',
+    description: 'Identifies misspellings and typos.',
   },
   {
     id: 'consistency',
-    label: 'Cohérence / contexte',
-    description: 'Vérification de la cohérence globale du document',
-    color: 'amber',
+    label: 'Consistency',
+    description: 'Verifies overall document consistency and cross-references.',
   },
   {
     id: 'clarity',
-    label: 'Clarté',
-    description: 'Lisibilité, phrases trop longues ou ambigües',
-    color: 'sky',
+    label: 'Clarity',
+    description: 'Flags unclear, overly long or ambiguous sentences.',
   },
   {
     id: 'tone',
-    label: 'Ton / style',
-    description: 'Adéquation du ton avec le type de document',
-    color: 'emerald',
+    label: 'Tone',
+    description: 'Checks that the tone matches the document type.',
   },
 ];
 
-// Types de document
+// Document types
 export const DOC_TYPES = [
-  { id: 'report', label: 'Rapport interne' },
-  { id: 'procedure', label: 'Procédure' },
-  { id: 'policy', label: 'Politique' },
-  { id: 'email', label: 'Email professionnel' },
-  { id: 'other', label: 'Autre' },
+  { id: 'report', label: 'Internal report' },
+  { id: 'procedure', label: 'Procedure' },
+  { id: 'policy', label: 'Policy' },
+  { id: 'email', label: 'Professional email' },
+  { id: 'other', label: 'Other' },
 ];
 
-// Niveaux de priorité
+// Priority levels
 export const PRIORITIES = {
   low: {
     id: 'low',
-    label: 'Faible',
+    label: 'Low',
     classes: 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200',
     dot: 'bg-emerald-500',
+    bar: 'bg-emerald-400',
   },
   medium: {
     id: 'medium',
-    label: 'Moyenne',
+    label: 'Medium',
     classes: 'bg-amber-50 text-amber-700 ring-1 ring-amber-200',
     dot: 'bg-amber-500',
+    bar: 'bg-amber-400',
   },
   high: {
     id: 'high',
-    label: 'Élevée',
+    label: 'High',
     classes: 'bg-rose-50 text-rose-700 ring-1 ring-rose-200',
     dot: 'bg-rose-500',
+    bar: 'bg-rose-400',
   },
 };
 
-// Couleur Tailwind par skill (utilisée pour les chips)
+// Tailwind classes per skill (used for chips)
 export const SKILL_STYLES = {
   grammar: 'bg-violet-50 text-violet-700 ring-1 ring-violet-200',
   spelling: 'bg-rose-50 text-rose-700 ring-1 ring-rose-200',

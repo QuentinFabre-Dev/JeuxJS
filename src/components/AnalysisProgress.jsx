@@ -7,7 +7,7 @@ export default function AnalysisProgress({ progress, count }) {
       <div className="flex items-center gap-3 mb-3">
         <Loader2 className="h-4 w-4 text-brand-600 animate-spin" />
         <p className="text-sm font-medium text-slate-900">
-          Analyse en cours…
+          Analysis in progress…
         </p>
         <span className="ml-auto text-xs text-slate-500 tabular-nums">
           {pct}% · {count} finding{count > 1 ? 's' : ''}

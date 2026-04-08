@@ -1,12 +1,11 @@
-import { Check } from 'lucide-react';
 import { SKILLS, DOC_TYPES } from '../data/constants.js';
+import SkillChip from './SkillChip.jsx';
 
 export default function AnalysisConfig({
   selectedSkills,
   onToggleSkill,
   docType,
   onDocTypeChange,
-  compact = false,
 }) {
   return (
     <div className="card p-6 space-y-6">
@@ -14,64 +13,31 @@ export default function AnalysisConfig({
       <section>
         <div className="flex items-baseline justify-between mb-3">
           <h3 className="text-sm font-semibold text-slate-900">
-            Types d'analyse
+            Analysis types
           </h3>
           <span className="text-xs text-slate-400">
-            {selectedSkills.length} sélectionné{selectedSkills.length > 1 ? 's' : ''}
+            {selectedSkills.length} selected
           </span>
         </div>
-        <div
-          className={[
-            'grid gap-2',
-            compact ? 'grid-cols-1' : 'grid-cols-1 sm:grid-cols-2',
-          ].join(' ')}
-        >
-          {SKILLS.map((skill) => {
-            const checked = selectedSkills.includes(skill.id);
-            return (
-              <button
-                key={skill.id}
-                type="button"
-                onClick={() => onToggleSkill(skill.id)}
-                className={[
-                  'group flex items-start gap-3 rounded-xl border p-3 text-left',
-                  'transition-all',
-                  checked
-                    ? 'border-brand-300 bg-brand-50/50 ring-1 ring-brand-200'
-                    : 'border-slate-200 hover:border-slate-300 hover:bg-slate-50',
-                ].join(' ')}
-              >
-                <span
-                  className={[
-                    'mt-0.5 h-4 w-4 rounded-md grid place-items-center transition-colors',
-                    checked
-                      ? 'bg-brand-600 text-white'
-                      : 'bg-white border border-slate-300',
-                  ].join(' ')}
-                  aria-hidden
-                >
-                  {checked && <Check className="h-3 w-3" strokeWidth={3} />}
-                </span>
-                <span className="flex-1 min-w-0">
-                  <span className="block text-sm font-medium text-slate-900">
-                    {skill.label}
-                  </span>
-                  {!compact && (
-                    <span className="block text-xs text-slate-500 mt-0.5 leading-snug">
-                      {skill.description}
-                    </span>
-                  )}
-                </span>
-              </button>
-            );
-          })}
+        <div className="flex flex-wrap gap-2">
+          {SKILLS.map((skill) => (
+            <SkillChip
+              key={skill.id}
+              skill={skill}
+              checked={selectedSkills.includes(skill.id)}
+              onToggle={onToggleSkill}
+            />
+          ))}
         </div>
+        <p className="mt-2 text-[11px] text-slate-400">
+          Hover a type to see its description.
+        </p>
       </section>
 
       {/* Document type */}
       <section>
         <h3 className="text-sm font-semibold text-slate-900 mb-3">
-          Type de document
+          Document type
         </h3>
         <div className="flex flex-wrap gap-2">
           {DOC_TYPES.map((type) => {

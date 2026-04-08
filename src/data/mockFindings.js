@@ -1,17 +1,19 @@
-// Banque de findings fictifs mais réalistes.
-// Chaque finding est associé à un "skill" et peut être généré
-// pour n'importe quel document.
+// Realistic mock findings pool, grouped by skill.
+// Each finding's `original` must match EXACTLY a sentence in
+// src/data/mockDocument.js (same page + same text) so that the
+// document preview can highlight it.
 
 export const MOCK_FINDINGS_POOL = [
-  // ── Grammaire ──────────────────────────────────────────────
+  // ── Grammar ────────────────────────────────────────────────
   {
     skill: 'grammar',
     page: 1,
     original:
-      "Les équipes commerciales et marketing doit collaborer plus étroitement.",
+      "The sales and marketing teams needs to collaborate more closely.",
     suggestion:
-      "Les équipes commerciales et marketing doivent collaborer plus étroitement.",
-    explanation: "Accord sujet-verbe : sujet pluriel \u2192 verbe au pluriel.",
+      "The sales and marketing teams need to collaborate more closely.",
+    explanation:
+      "Subject-verb agreement: the subject is plural, the verb must be plural.",
     priority: 'high',
     confidence: 0.96,
   },
@@ -19,11 +21,11 @@ export const MOCK_FINDINGS_POOL = [
     skill: 'grammar',
     page: 2,
     original:
-      "Aucun des documents transmis n\u2019ont été validés par la direction.",
+      "Neither of the documents submitted have been approved by management.",
     suggestion:
-      "Aucun des documents transmis n\u2019a été validé par la direction.",
+      "Neither of the documents submitted has been approved by management.",
     explanation:
-      "« Aucun » est singulier, le verbe et le participe doivent l\u2019être également.",
+      "\u201CNeither\u201D is singular; the verb should agree (has, not have).",
     priority: 'medium',
     confidence: 0.89,
   },
@@ -31,24 +33,24 @@ export const MOCK_FINDINGS_POOL = [
     skill: 'grammar',
     page: 4,
     original:
-      "Suite à la réunion de lundi, on a décidés de reporter le lancement.",
+      "Following Monday's meeting, we has decided to postpone the launch.",
     suggestion:
-      "Suite à la réunion de lundi, nous avons décidé de reporter le lancement.",
+      "Following Monday's meeting, we have decided to postpone the launch.",
     explanation:
-      "Le sujet « on » entraîne un participe au singulier ; préférer « nous » dans un document professionnel.",
+      "The subject \u201Cwe\u201D requires \u201Chave\u201D as the auxiliary verb.",
     priority: 'medium',
     confidence: 0.84,
   },
 
-  // ── Orthographe ────────────────────────────────────────────
+  // ── Spelling ───────────────────────────────────────────────
   {
     skill: 'spelling',
     page: 1,
     original:
-      "Le rapport présente les chifres clés du dernier trimestre.",
+      "The report presents the key figures for the last quater.",
     suggestion:
-      "Le rapport présente les chiffres clés du dernier trimestre.",
-    explanation: "Faute d\u2019orthographe : « chifres » \u2192 « chiffres ».",
+      "The report presents the key figures for the last quarter.",
+    explanation: "Typo: \u201Cquater\u201D \u2192 \u201Cquarter\u201D.",
     priority: 'low',
     confidence: 0.99,
   },
@@ -56,10 +58,11 @@ export const MOCK_FINDINGS_POOL = [
     skill: 'spelling',
     page: 3,
     original:
-      "Les colaborateurs doivent suivre la procédure de sécurité.",
+      "Employees must follow the security procceedure.",
     suggestion:
-      "Les collaborateurs doivent suivre la procédure de sécurité.",
-    explanation: "« colaborateurs » \u2192 « collaborateurs » (deux « l »).",
+      "Employees must follow the security procedure.",
+    explanation:
+      "Misspelling: \u201Cprocceedure\u201D \u2192 \u201Cprocedure\u201D.",
     priority: 'low',
     confidence: 0.98,
   },
@@ -67,24 +70,25 @@ export const MOCK_FINDINGS_POOL = [
     skill: 'spelling',
     page: 5,
     original:
-      "L\u2019entreprise s\u2019engage à respecter les engagement RSE.",
+      "The company is committed to respecting its CSR committment.",
     suggestion:
-      "L\u2019entreprise s\u2019engage à respecter les engagements RSE.",
-    explanation: "Accord pluriel manquant sur « engagements ».",
+      "The company is committed to respecting its CSR commitments.",
+    explanation:
+      "\u201Ccommittment\u201D should be \u201Ccommitments\u201D (one \u201Ct\u201D, plural).",
     priority: 'medium',
     confidence: 0.93,
   },
 
-  // ── Cohérence / contexte ───────────────────────────────────
+  // ── Consistency / context ──────────────────────────────────
   {
     skill: 'consistency',
     page: 2,
     original:
-      "Le projet sera livré au T2 2025 avec un budget de 120 k\u20ac.",
+      "The project will be delivered in Q2 2025 with a budget of \u20ac120k.",
     suggestion:
-      "Le projet sera livré au T3 2025 avec un budget de 120 k\u20ac.",
+      "The project will be delivered in Q3 2025 with a budget of \u20ac120k.",
     explanation:
-      "Incohérence avec la section 4.1 qui mentionne une livraison T3 2025.",
+      "Inconsistent with section 4.1 which states a Q3 2025 delivery.",
     priority: 'high',
     confidence: 0.78,
   },
@@ -92,11 +96,11 @@ export const MOCK_FINDINGS_POOL = [
     skill: 'consistency',
     page: 6,
     original:
-      "Cette procédure remplace la version v1.2 datée du 14/03/2024.",
+      "This procedure replaces version v1.2 dated 03/14/2024.",
     suggestion:
-      "Cette procédure remplace la version v1.3 datée du 14/03/2024.",
+      "This procedure replaces version v1.3 dated 03/14/2024.",
     explanation:
-      "La version v1.3 est mentionnée en page 1, contradiction interne.",
+      "Version v1.3 is referenced on page 1 \u2014 internal contradiction.",
     priority: 'high',
     confidence: 0.81,
   },
@@ -104,25 +108,25 @@ export const MOCK_FINDINGS_POOL = [
     skill: 'consistency',
     page: 7,
     original:
-      "Les utilisateurs peuvent réinitialiser leur mot de passe à tout moment.",
+      "Users can reset their password at any time.",
     suggestion:
-      "Les utilisateurs peuvent réinitialiser leur mot de passe une fois par mois (cf. section Sécurité).",
+      "Users can reset their password once per month (see Security section).",
     explanation:
-      "Contradiction avec la section Sécurité qui impose une limite mensuelle.",
+      "Contradicts the Security section which enforces a monthly limit.",
     priority: 'medium',
     confidence: 0.72,
   },
 
-  // ── Clarté ─────────────────────────────────────────────────
+  // ── Clarity ────────────────────────────────────────────────
   {
     skill: 'clarity',
     page: 3,
     original:
-      "Dans le cadre de la mise en \u0153uvre opérationnelle de la stratégie globale, il conviendra, le moment venu, d\u2019articuler les briques fonctionnelles de manière à garantir un alignement transverse.",
+      "Within the framework of the operational implementation of the overall strategy, it will be appropriate, in due course, to articulate the functional building blocks in such a way as to ensure transversal alignment.",
     suggestion:
-      "Nous alignerons les modules fonctionnels avec la stratégie globale lors du déploiement.",
+      "We will align the functional modules with the overall strategy during rollout.",
     explanation:
-      "Phrase trop longue (32 mots) et vocabulaire flou. Réécriture recommandée.",
+      "Sentence too long (35+ words) and vague. Rewrite recommended.",
     priority: 'medium',
     confidence: 0.87,
   },
@@ -130,11 +134,10 @@ export const MOCK_FINDINGS_POOL = [
     skill: 'clarity',
     page: 5,
     original:
-      "Le livrable final, qui devra être validé par les parties prenantes, sera mis à disposition.",
+      "The final deliverable, which will need to be validated by the stakeholders, will be made available.",
     suggestion:
-      "Les parties prenantes valideront le livrable final avant sa mise à disposition.",
-    explanation:
-      "Préférer la voix active pour améliorer la lisibilité.",
+      "Stakeholders will validate the final deliverable before it is made available.",
+    explanation: "Prefer the active voice to improve readability.",
     priority: 'low',
     confidence: 0.85,
   },
@@ -142,25 +145,24 @@ export const MOCK_FINDINGS_POOL = [
     skill: 'clarity',
     page: 8,
     original:
-      "Il est à noter qu\u2019un certain nombre d\u2019éléments restent à clarifier.",
+      "It is to be noted that a certain number of elements remain to be clarified.",
     suggestion:
-      "Plusieurs points restent à clarifier : [lister les éléments].",
+      "Several points remain to be clarified: [list the items].",
     explanation:
-      "Formulation vague \u2014 préciser les éléments concernés.",
+      "Vague wording \u2014 explicitly list the items that need clarification.",
     priority: 'medium',
     confidence: 0.79,
   },
 
-  // ── Ton / style ────────────────────────────────────────────
+  // ── Tone / style ───────────────────────────────────────────
   {
     skill: 'tone',
     page: 1,
     original:
-      "Salut l\u2019équipe, j\u2019espère que vous allez bien :)",
-    suggestion:
-      "Bonjour à toutes et à tous,",
+      "Hey team, hope you're all good :)",
+    suggestion: "Dear all,",
     explanation:
-      "Ton trop familier pour un email professionnel externe.",
+      "Too casual for an external professional communication.",
     priority: 'high',
     confidence: 0.91,
   },
@@ -168,11 +170,11 @@ export const MOCK_FINDINGS_POOL = [
     skill: 'tone',
     page: 4,
     original:
-      "C\u2019est juste impossible de respecter ce planning.",
+      "It's just impossible to meet this schedule.",
     suggestion:
-      "Le respect de ce planning représente un défi important compte tenu des ressources actuelles.",
+      "Meeting this schedule represents a significant challenge given the current resources.",
     explanation:
-      "Reformulation pour un ton plus mesuré et constructif.",
+      "Rephrase for a more measured and constructive tone.",
     priority: 'medium',
     confidence: 0.83,
   },
@@ -180,11 +182,11 @@ export const MOCK_FINDINGS_POOL = [
     skill: 'tone',
     page: 6,
     original:
-      "Merci de bien vouloir faire le nécessaire ASAP.",
+      "Please take care of this ASAP.",
     suggestion:
-      "Merci de traiter ce point dès que possible, idéalement avant vendredi.",
+      "Please address this as soon as possible, ideally by Friday.",
     explanation:
-      "Éviter les anglicismes et préciser une échéance claire.",
+      "Avoid abbreviations and provide a clear deadline.",
     priority: 'low',
     confidence: 0.88,
   },

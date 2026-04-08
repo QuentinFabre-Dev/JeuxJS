@@ -10,8 +10,8 @@ export default function FindingsList({
 }) {
   const containerRef = useRef(null);
 
-  // Auto-scroll vers la card sélectionnée (utile quand la sélection
-  // vient du document plutôt que de la liste).
+  // Auto-scroll to the selected card (when the selection comes
+  // from the document preview rather than from the list itself).
   useEffect(() => {
     if (!selectedFindingId || !containerRef.current) return;
     const el = containerRef.current.querySelector(
@@ -28,20 +28,20 @@ export default function FindingsList({
         </div>
         <p className="text-sm font-medium text-slate-700">
           {isAnalyzing
-            ? 'En attente des premiers résultats…'
-            : 'Aucun finding à afficher'}
+            ? 'Waiting for first results…'
+            : 'No findings to display'}
         </p>
         <p className="text-xs text-slate-500 mt-1">
           {isAnalyzing
-            ? "Les anomalies apparaîtront ici dès qu\u2019elles sont détectées."
-            : 'Ajustez vos filtres pour voir plus de résultats.'}
+            ? 'Anomalies will appear here as soon as they are detected.'
+            : 'Adjust your filters to see more results.'}
         </p>
       </div>
     );
   }
 
   return (
-    <div ref={containerRef} className="space-y-3">
+    <div ref={containerRef} className="space-y-2.5">
       {findings.map((finding) => (
         <FindingCard
           key={finding.id}

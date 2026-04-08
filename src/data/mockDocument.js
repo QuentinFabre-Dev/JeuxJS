@@ -1,17 +1,17 @@
-// Document fictif utilisé pour la preview.
-// Les phrases marquées par "// FINDING" correspondent EXACTEMENT à un
-// `original` de mockFindings.js (matching par texte + numéro de page).
+// Fictional document used by the preview.
+// Sentences marked with "// FINDING" correspond EXACTLY to an
+// `original` entry in mockFindings.js (matched by page + text).
 //
-// Chaque page est un tableau de blocs typés :
-//   - { kind: 'heading', text: '...' }   → titre de section
-//   - { kind: 'p',       text: '...' }   → paragraphe / phrase
+// Each page is an array of typed blocks:
+//   - { kind: 'heading', text: '...' }  → section heading
+//   - { kind: 'p',       text: '...' }  → paragraph / sentence
 //
-// Les phrases qui matchent un finding sont rendues comme des "marks"
-// cliquables dans <DocumentPreview />.
+// Sentences that match a finding are rendered as clickable
+// highlights inside <DocumentPreview />.
 
 export const MOCK_DOCUMENT = {
-  title: "Rapport interne \u2014 Q1 2025",
-  subtitle: "Synthèse trimestrielle et plan d'action",
+  title: "Internal Report \u2014 Q1 2025",
+  subtitle: "Quarterly review and action plan",
   pages: [
     // ── Page 1 ──────────────────────────────────────────────
     [
@@ -19,153 +19,154 @@ export const MOCK_DOCUMENT = {
       {
         kind: 'p',
         text:
-          "Ce document présente la synthèse du premier trimestre 2025 et les axes d'amélioration identifiés par les différentes équipes opérationnelles.",
+          "This document summarizes the first quarter of 2025 and the areas for improvement identified by the various operational teams.",
       },
       {
         kind: 'p',
-        text: "Salut l\u2019équipe, j\u2019espère que vous allez bien :)", // FINDING tone
-      },
-      {
-        kind: 'p',
-        text: "Le rapport présente les chifres clés du dernier trimestre.", // FINDING spelling
+        text: "Hey team, hope you're all good :)", // FINDING tone
       },
       {
         kind: 'p',
         text:
-          "Les équipes commerciales et marketing doit collaborer plus étroitement.", // FINDING grammar
+          "The report presents the key figures for the last quater.", // FINDING spelling
       },
       {
         kind: 'p',
         text:
-          "Nous reviendrons en détail sur chacun de ces points dans les sections suivantes.",
+          "The sales and marketing teams needs to collaborate more closely.", // FINDING grammar
+      },
+      {
+        kind: 'p',
+        text:
+          "We will discuss each of these points in detail in the following sections.",
       },
     ],
 
     // ── Page 2 ──────────────────────────────────────────────
     [
-      { kind: 'heading', text: '2. Validation des livrables' },
+      { kind: 'heading', text: '2. Deliverable validation' },
       {
         kind: 'p',
         text:
-          "La gouvernance documentaire impose un circuit de validation à plusieurs niveaux pour chaque document publié à l'externe.",
+          "Document governance enforces a multi-level approval process for every document published externally.",
       },
       {
         kind: 'p',
         text:
-          "Aucun des documents transmis n\u2019ont été validés par la direction.", // FINDING grammar
+          "Neither of the documents submitted have been approved by management.", // FINDING grammar
       },
       {
         kind: 'p',
         text:
-          "Le projet sera livré au T2 2025 avec un budget de 120 k\u20ac.", // FINDING consistency
+          "The project will be delivered in Q2 2025 with a budget of \u20ac120k.", // FINDING consistency
       },
       {
         kind: 'p',
         text:
-          "Un comité de pilotage sera organisé courant avril pour ajuster ces éléments.",
+          "A steering committee will meet in April to adjust these items.",
       },
     ],
 
     // ── Page 3 ──────────────────────────────────────────────
     [
-      { kind: 'heading', text: '3. Sécurité et conformité' },
+      { kind: 'heading', text: '3. Security and compliance' },
       {
         kind: 'p',
         text:
-          "Les colaborateurs doivent suivre la procédure de sécurité.", // FINDING spelling
+          "Employees must follow the security procceedure.", // FINDING spelling
       },
       {
         kind: 'p',
         text:
-          "Dans le cadre de la mise en \u0153uvre opérationnelle de la stratégie globale, il conviendra, le moment venu, d\u2019articuler les briques fonctionnelles de manière à garantir un alignement transverse.", // FINDING clarity
+          "Within the framework of the operational implementation of the overall strategy, it will be appropriate, in due course, to articulate the functional building blocks in such a way as to ensure transversal alignment.", // FINDING clarity
       },
       {
         kind: 'p',
         text:
-          "Une formation obligatoire est planifiée pour l'ensemble des équipes au cours du second trimestre.",
+          "Mandatory training is scheduled for all teams during the second quarter.",
       },
     ],
 
     // ── Page 4 ──────────────────────────────────────────────
     [
-      { kind: 'heading', text: '4. Planning et arbitrages' },
+      { kind: 'heading', text: '4. Planning and decisions' },
       {
         kind: 'p',
         text:
-          "Plusieurs décisions ont été prises lors des réunions hebdomadaires pour adapter le calendrier projet.",
+          "Several decisions were made during the weekly meetings to adjust the project schedule.",
       },
       {
         kind: 'p',
         text:
-          "Suite à la réunion de lundi, on a décidés de reporter le lancement.", // FINDING grammar
+          "Following Monday's meeting, we has decided to postpone the launch.", // FINDING grammar
       },
       {
         kind: 'p',
-        text: "C\u2019est juste impossible de respecter ce planning.", // FINDING tone
+        text: "It's just impossible to meet this schedule.", // FINDING tone
       },
       {
         kind: 'p',
         text:
-          "Une révision complète du calendrier est en cours, en lien avec le PMO.",
+          "A full review of the schedule is underway in coordination with the PMO.",
       },
     ],
 
     // ── Page 5 ──────────────────────────────────────────────
     [
-      { kind: 'heading', text: '5. Engagements RSE' },
+      { kind: 'heading', text: '5. CSR commitments' },
       {
         kind: 'p',
         text:
-          "L\u2019entreprise s\u2019engage à respecter les engagement RSE.", // FINDING spelling
+          "The company is committed to respecting its CSR committment.", // FINDING spelling
       },
       {
         kind: 'p',
         text:
-          "Le livrable final, qui devra être validé par les parties prenantes, sera mis à disposition.", // FINDING clarity
+          "The final deliverable, which will need to be validated by the stakeholders, will be made available.", // FINDING clarity
       },
       {
         kind: 'p',
         text:
-          "Le détail des engagements et indicateurs de suivi est annexé en fin de document.",
+          "Detailed commitments and tracking indicators are attached at the end of the document.",
       },
     ],
 
     // ── Page 6 ──────────────────────────────────────────────
     [
-      { kind: 'heading', text: '6. Gestion documentaire' },
+      { kind: 'heading', text: '6. Document management' },
       {
         kind: 'p',
         text:
-          "Cette procédure remplace la version v1.2 datée du 14/03/2024.", // FINDING consistency
+          "This procedure replaces version v1.2 dated 03/14/2024.", // FINDING consistency
       },
       {
         kind: 'p',
-        text: "Merci de bien vouloir faire le nécessaire ASAP.", // FINDING tone
+        text: "Please take care of this ASAP.", // FINDING tone
       },
       {
         kind: 'p',
         text:
-          "Toute modification doit faire l'objet d'une revue par le référent qualité avant publication.",
+          "Any change must be reviewed by the quality lead before publication.",
       },
     ],
 
     // ── Page 7 ──────────────────────────────────────────────
     [
-      { kind: 'heading', text: '7. Sécurité des accès' },
+      { kind: 'heading', text: '7. Access security' },
       {
         kind: 'p',
         text:
-          "La politique de gestion des mots de passe a été mise à jour cette année.",
+          "The password management policy was updated this year.",
       },
       {
         kind: 'p',
         text:
-          "Les utilisateurs peuvent réinitialiser leur mot de passe à tout moment.", // FINDING consistency
+          "Users can reset their password at any time.", // FINDING consistency
       },
       {
         kind: 'p',
         text:
-          "Pour rappel, le service IT reste joignable en cas de difficulté.",
+          "As a reminder, the IT service is available to support any issue.",
       },
     ],
 
@@ -175,17 +176,17 @@ export const MOCK_DOCUMENT = {
       {
         kind: 'p',
         text:
-          "L'audit met en lumière plusieurs points d'amélioration que nous traiterons par ordre de priorité.",
+          "The audit highlights several improvement areas that will be addressed in order of priority.",
       },
       {
         kind: 'p',
         text:
-          "Il est à noter qu\u2019un certain nombre d\u2019éléments restent à clarifier.", // FINDING clarity
+          "It is to be noted that a certain number of elements remain to be clarified.", // FINDING clarity
       },
       {
         kind: 'p',
         text:
-          "Une réunion de restitution sera planifiée la semaine prochaine pour partager les conclusions.",
+          "A debrief session will be scheduled next week to share the conclusions.",
       },
     ],
   ],

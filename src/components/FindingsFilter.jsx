@@ -10,10 +10,10 @@ export default function FindingsFilter({
   visible,
 }) {
   return (
-    <div className="flex flex-wrap items-center gap-3 mb-4">
+    <div className="flex flex-wrap items-center gap-3">
       <div className="flex items-center gap-2 text-xs text-slate-500">
         <Filter className="h-3.5 w-3.5" />
-        <span>Filtres</span>
+        <span>Filters</span>
       </div>
 
       <select
@@ -23,7 +23,7 @@ export default function FindingsFilter({
                    font-medium text-slate-700 shadow-soft
                    focus:outline-none focus:ring-2 focus:ring-brand-500/30"
       >
-        <option value="all">Tous les types</option>
+        <option value="all">All types</option>
         {SKILLS.map((s) => (
           <option key={s.id} value={s.id}>
             {s.label}
@@ -38,10 +38,10 @@ export default function FindingsFilter({
                    font-medium text-slate-700 shadow-soft
                    focus:outline-none focus:ring-2 focus:ring-brand-500/30"
       >
-        <option value="all">Toutes priorités</option>
+        <option value="all">All priorities</option>
         {Object.values(PRIORITIES).map((p) => (
           <option key={p.id} value={p.id}>
-            Priorité {p.label.toLowerCase()}
+            {p.label} priority
           </option>
         ))}
       </select>

@@ -5,11 +5,10 @@ import { MOCK_DOCUMENT } from '../data/mockDocument.js';
 import { PRIORITIES } from '../data/constants.js';
 
 /**
- * Affiche un aperçu paginé du document analysé.
- * Les phrases qui correspondent à un finding sont surlignées et
- * cliquables. Quand un finding est sélectionné (depuis la liste OU
- * depuis ce composant), la preview scrolle automatiquement vers la
- * phrase correspondante.
+ * Paginated preview of the analyzed document.
+ * Sentences that match a finding are highlighted and clickable.
+ * When a finding is selected (from the list OR from this component),
+ * the preview auto-scrolls to the matching sentence.
  */
 export default function DocumentPreview({
   findings,
@@ -18,7 +17,7 @@ export default function DocumentPreview({
 }) {
   const scrollRef = useRef(null);
 
-  // Index "page::texte" → finding (premier match en cas d'égalité).
+  // Index "page::text" → finding (first match wins on collision).
   const findingByLocation = useMemo(() => {
     const map = new Map();
     findings.forEach((f) => {
@@ -28,7 +27,7 @@ export default function DocumentPreview({
     return map;
   }, [findings]);
 
-  // Auto-scroll vers la phrase sélectionnée.
+  // Auto-scroll to the selected sentence.
   useEffect(() => {
     if (!selectedFindingId || !scrollRef.current) return;
     const el = scrollRef.current.querySelector(
@@ -78,7 +77,7 @@ export default function DocumentPreview({
         <span>{block.text}</span>
         <span
           className={`ml-1.5 inline-block h-1.5 w-1.5 rounded-full align-middle ${priority.dot}`}
-          aria-label={`priorité ${priority.label}`}
+          aria-label={`${priority.label} priority`}
         />
       </button>
     );
@@ -127,8 +126,8 @@ export default function DocumentPreview({
       <div className="px-5 py-2.5 border-t border-slate-100 bg-slate-50/50 text-[11px] text-slate-500 flex items-center gap-2 shrink-0">
         <Sparkles className="h-3.5 w-3.5 text-brand-500" />
         {findings.length === 0
-          ? "Les phrases analysées s'illumineront ici au fur et à mesure."
-          : "Cliquez sur une phrase ou sur un finding pour les lier."}
+          ? 'Analyzed sentences will light up here as they come in.'
+          : 'Click a sentence or a finding to link them together.'}
       </div>
     </div>
   );
