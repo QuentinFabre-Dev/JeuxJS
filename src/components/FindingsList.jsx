@@ -7,6 +7,8 @@ export default function FindingsList({
   isAnalyzing,
   selectedFindingId,
   onSelectFinding,
+  resolvedIds,
+  onToggleResolved,
 }) {
   const containerRef = useRef(null);
 
@@ -47,7 +49,9 @@ export default function FindingsList({
           key={finding.id}
           finding={finding}
           isSelected={finding.id === selectedFindingId}
+          isResolved={resolvedIds?.has(finding.id)}
           onClick={() => onSelectFinding?.(finding.id)}
+          onToggleResolved={onToggleResolved}
         />
       ))}
     </div>

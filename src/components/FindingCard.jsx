@@ -1,13 +1,25 @@
-import { ArrowRight, FileText } from 'lucide-react';
+import { ArrowRight, Check, FileText } from 'lucide-react';
 import { PRIORITIES, SKILL_STYLES, SKILLS } from '../data/constants.js';
 
-const skillLabel = (id) => SKILLS.find((s) => s.id === id)?.label ?? id;
+const skillLabel = (finding) => {
+  if (finding.skill === 'custom') {
+    return finding.customLabel ?? 'Custom';
+  }
+  return SKILLS.find((s) => s.id === finding.skill)?.label ?? finding.skill;
+};
 
 /**
  * Compact "table row" style finding entry.
  * Clickable, with a selected state that ties it to the preview.
+ * A checkbox on the left lets the user mark the finding as resolved.
  */
-export default function FindingCard({ finding, isSelected, onClick }) {
+export default function FindingCard({
+  finding,
+  isSelected,
+  isResolved,
+  onClick,
+  onToggleResolved,
+}) {
   const priority = PRIORITIES[finding.priority];
   const confidencePct = Math.round(finding.confidence * 100);
 
@@ -30,6 +42,7 @@ export default function FindingCard({ finding, isSelected, onClick }) {
         isSelected
           ? 'ring-2 ring-brand-500 shadow-card'
           : 'hover:shadow-card hover:border-slate-300/80',
+        isResolved ? 'opacity-60' : '',
       ].join(' ')}
     >
       {/* Priority rail */}
@@ -41,8 +54,33 @@ export default function FindingCard({ finding, isSelected, onClick }) {
       <div className="flex-1 min-w-0 p-3.5">
         {/* Meta line */}
         <header className="flex flex-wrap items-center gap-2 mb-2">
-          <span className={`chip ${SKILL_STYLES[finding.skill]}`}>
-            {skillLabel(finding.skill)}
+          {/* Resolve checkbox */}
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              onToggleResolved?.(finding.id);
+            }}
+            aria-label={isResolved ? 'Mark as unresolved' : 'Mark as resolved'}
+            aria-pressed={isResolved}
+            className={[
+              'h-4 w-4 rounded border grid place-items-center shrink-0 transition-colors',
+              'focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-400',
+              isResolved
+                ? 'bg-emerald-500 border-emerald-500 text-white'
+                : 'bg-white border-slate-300 hover:border-brand-400',
+            ].join(' ')}
+          >
+            {isResolved && <Check className="h-3 w-3" strokeWidth={3} />}
+          </button>
+
+          <span
+            className={[
+              `chip ${SKILL_STYLES[finding.skill] ?? SKILL_STYLES.custom}`,
+              isResolved ? 'line-through' : '',
+            ].join(' ')}
+          >
+            {skillLabel(finding)}
           </span>
           <span className={`chip ${priority.classes}`}>
             <span className={`h-1.5 w-1.5 rounded-full ${priority.dot}`} />
@@ -64,7 +102,12 @@ export default function FindingCard({ finding, isSelected, onClick }) {
             <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400 mb-0.5">
               Original
             </p>
-            <p className="text-[13px] text-slate-800 leading-snug">
+            <p
+              className={[
+                'text-[13px] text-slate-800 leading-snug',
+                isResolved ? 'line-through' : '',
+              ].join(' ')}
+            >
               {finding.original}
             </p>
           </div>

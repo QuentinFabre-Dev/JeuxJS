@@ -7,7 +7,11 @@ const scoreColor = (score) => {
   return { label: 'Needs work', text: 'text-rose-600', ring: 'stroke-rose-500' };
 };
 
-export default function DocumentScore({ findings, isAnalyzing }) {
+export default function DocumentScore({
+  findings,
+  isAnalyzing,
+  resolvedCount = 0,
+}) {
   const score = computeDocumentScore(findings);
   const { label, text, ring } = scoreColor(score);
 
@@ -53,7 +57,9 @@ export default function DocumentScore({ findings, isAnalyzing }) {
         <p className="text-xs text-slate-500 mt-1 leading-snug">
           {isAnalyzing
             ? 'Live score, updated as findings come in.'
-            : `Based on ${findings.length} finding${findings.length > 1 ? 's' : ''} detected.`}
+            : `Based on ${findings.length} open finding${
+                findings.length === 1 ? '' : 's'
+              }${resolvedCount > 0 ? ` · ${resolvedCount} resolved` : ''}.`}
         </p>
       </div>
     </div>

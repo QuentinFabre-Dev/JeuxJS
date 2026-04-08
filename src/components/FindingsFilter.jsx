@@ -8,6 +8,10 @@ export default function FindingsFilter({
   onPriorityFilterChange,
   total,
   visible,
+  hasCustomFindings,
+  showResolved,
+  onToggleShowResolved,
+  resolvedCount = 0,
 }) {
   return (
     <div className="flex flex-wrap items-center gap-3">
@@ -29,6 +33,7 @@ export default function FindingsFilter({
             {s.label}
           </option>
         ))}
+        {hasCustomFindings && <option value="custom">Custom</option>}
       </select>
 
       <select
@@ -45,6 +50,20 @@ export default function FindingsFilter({
           </option>
         ))}
       </select>
+
+      <label className="flex items-center gap-1.5 text-xs text-slate-600 cursor-pointer select-none">
+        <input
+          type="checkbox"
+          checked={showResolved}
+          onChange={(e) => onToggleShowResolved?.(e.target.checked)}
+          className="h-3.5 w-3.5 rounded border-slate-300 text-brand-600
+                     focus:ring-brand-500/30"
+        />
+        Show resolved
+        {resolvedCount > 0 && (
+          <span className="text-slate-400 tabular-nums">({resolvedCount})</span>
+        )}
+      </label>
 
       <span className="ml-auto text-xs text-slate-500 tabular-nums">
         {visible} / {total} finding{total > 1 ? 's' : ''}

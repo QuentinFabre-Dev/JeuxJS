@@ -1,7 +1,8 @@
-import { FileText, Play, RotateCcw, Square, X } from 'lucide-react';
+import { CheckCircle2, FileText, Play, RotateCcw, Square, X } from 'lucide-react';
 
-import { DOC_TYPES, SKILLS } from '../data/constants.js';
+import { DOC_TYPES, SERVICE_LINES, SKILLS } from '../data/constants.js';
 import SkillChip from './SkillChip.jsx';
+import CustomCheckChip from './CustomCheckChip.jsx';
 
 const formatBytes = (bytes) => {
   if (!bytes) return '';
@@ -12,21 +13,28 @@ const formatBytes = (bytes) => {
 
 /**
  * Horizontal configuration bar shown during and after analysis.
- * Lets the user tweak skills / doc type and relaunch the analysis
- * without sacrificing vertical space.
+ * Lets the user tweak skills / doc type / service line and relaunch
+ * the analysis without sacrificing vertical space.
  */
 export default function TopBar({
   file,
   onClearFile,
   selectedSkills,
   onToggleSkill,
+  customChecks,
+  onRemoveCustomCheck,
   docType,
   onDocTypeChange,
+  serviceLine,
+  onServiceLineChange,
   isAnalyzing,
   onStart,
   onStop,
   onReset,
+  score,
 }) {
+  const readyToSend = typeof score === 'number' && score >= 80;
+
   return (
     <div className="card p-4 flex flex-wrap items-center gap-4">
       {/* File */}
@@ -35,9 +43,21 @@ export default function TopBar({
           <FileText className="h-4 w-4 text-brand-600" />
         </div>
         <div className="min-w-0">
-          <p className="text-sm font-medium text-slate-900 truncate max-w-[220px]">
-            {file?.name ?? 'No document'}
-          </p>
+          <div className="flex items-center gap-2">
+            <p className="text-sm font-medium text-slate-900 truncate max-w-[220px]">
+              {file?.name ?? 'No document'}
+            </p>
+            {readyToSend && (
+              <span
+                className="chip bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200
+                           animate-fade-in-up"
+                title={`Quality score: ${score}/100`}
+              >
+                <CheckCircle2 className="h-3 w-3" />
+                Ready to send
+              </span>
+            )}
+          </div>
           {file && (
             <p className="text-[11px] text-slate-500 -mt-0.5">
               {formatBytes(file.size)}
@@ -58,7 +78,7 @@ export default function TopBar({
 
       <div className="h-8 w-px bg-slate-200 hidden md:block" />
 
-      {/* Skills */}
+      {/* Skills + custom */}
       <div className="flex items-center gap-2 min-w-0">
         <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-400 shrink-0">
           Analysis
@@ -70,6 +90,13 @@ export default function TopBar({
               skill={skill}
               checked={selectedSkills.includes(skill.id)}
               onToggle={onToggleSkill}
+            />
+          ))}
+          {customChecks?.map((label) => (
+            <CustomCheckChip
+              key={label}
+              label={label}
+              onRemove={onRemoveCustomCheck}
             />
           ))}
         </div>
@@ -91,6 +118,25 @@ export default function TopBar({
           {DOC_TYPES.map((t) => (
             <option key={t.id} value={t.id}>
               {t.label}
+            </option>
+          ))}
+        </select>
+      </div>
+
+      {/* Service line */}
+      <div className="flex items-center gap-2">
+        <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-400 shrink-0">
+          Service
+        </span>
+        <select
+          value={serviceLine}
+          onChange={(e) => onServiceLineChange(e.target.value)}
+          className="rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-medium text-slate-700 shadow-soft
+                     focus:outline-none focus:ring-2 focus:ring-brand-500/30"
+        >
+          {SERVICE_LINES.map((sl) => (
+            <option key={sl.id} value={sl.id}>
+              {sl.label}
             </option>
           ))}
         </select>

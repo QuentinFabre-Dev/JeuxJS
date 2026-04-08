@@ -191,3 +191,56 @@ export const MOCK_FINDINGS_POOL = [
     confidence: 0.88,
   },
 ];
+
+// Templates reused when the user adds a "custom" analysis check.
+// Each template references a sentence that exists in mockDocument.js
+// but is NOT part of the built-in findings, so the custom finding
+// still highlights correctly in the document preview.
+// `explanationTpl` uses a {name} placeholder replaced with the
+// user-provided label at runtime.
+export const CUSTOM_CHECK_TEMPLATES = [
+  {
+    page: 1,
+    original:
+      "This document summarizes the first quarter of 2025 and the areas for improvement identified by the various operational teams.",
+    suggestion:
+      "Add an executive summary with key figures, risks and decisions required.",
+    explanationTpl:
+      "Custom check \u201C{name}\u201D suggests adding a dedicated TL;DR section at the very top.",
+    priority: 'medium',
+    confidence: 0.74,
+  },
+  {
+    page: 2,
+    original:
+      "A steering committee will meet in April to adjust these items.",
+    suggestion:
+      "Specify attendees, agenda, and expected decisions for the steering committee.",
+    explanationTpl:
+      "Custom check \u201C{name}\u201D flags missing governance detail.",
+    priority: 'low',
+    confidence: 0.71,
+  },
+  {
+    page: 6,
+    original:
+      "Any change must be reviewed by the quality lead before publication.",
+    suggestion:
+      "Reference the change-management SOP (e.g. DOC-QC-014) and the reviewer's contact.",
+    explanationTpl:
+      "Custom check \u201C{name}\u201D: process references are missing.",
+    priority: 'medium',
+    confidence: 0.82,
+  },
+  {
+    page: 7,
+    original:
+      "The password management policy was updated this year.",
+    suggestion:
+      "Include the policy version number, effective date and owner.",
+    explanationTpl:
+      "Custom check \u201C{name}\u201D: insufficient traceability on policy updates.",
+    priority: 'medium',
+    confidence: 0.76,
+  },
+];

@@ -1,4 +1,7 @@
-import { MOCK_FINDINGS_POOL } from '../data/mockFindings.js';
+import {
+  CUSTOM_CHECK_TEMPLATES,
+  MOCK_FINDINGS_POOL,
+} from '../data/mockFindings.js';
 
 /**
  * Simple unique id generator.
@@ -27,12 +30,13 @@ const jitterConfidence = (base) => {
 };
 
 /**
- * Builds the run plan based on the selected skills.
+ * Builds the run plan based on the selected skills and custom checks.
  * The document type slightly boosts the confidence of the most
  * relevant skill (without duplicating findings, so the 1:1 mapping
  * with the document preview is preserved).
+ * Custom checks each generate one finding based on a template.
  */
-const buildRunPlan = ({ skills, docType }) => {
+const buildRunPlan = ({ skills, docType, customChecks = [] }) => {
   const filtered = MOCK_FINDINGS_POOL.filter((f) => skills.includes(f.skill));
 
   const boostMap = {
@@ -43,7 +47,7 @@ const buildRunPlan = ({ skills, docType }) => {
   };
   const boostedSkill = boostMap[docType];
 
-  return shuffle(filtered).map((f) => {
+  const standard = filtered.map((f) => {
     const base = jitterConfidence(f.confidence);
     const boosted = f.skill === boostedSkill ? Math.min(0.99, base + 0.04) : base;
     return {
@@ -52,6 +56,23 @@ const buildRunPlan = ({ skills, docType }) => {
       confidence: Number(boosted.toFixed(2)),
     };
   });
+
+  const customs = customChecks.map((name, idx) => {
+    const tpl = CUSTOM_CHECK_TEMPLATES[idx % CUSTOM_CHECK_TEMPLATES.length];
+    return {
+      page: tpl.page,
+      original: tpl.original,
+      suggestion: tpl.suggestion,
+      explanation: tpl.explanationTpl.replace('{name}', name),
+      priority: tpl.priority,
+      confidence: Number(jitterConfidence(tpl.confidence).toFixed(2)),
+      skill: 'custom',
+      customLabel: name,
+      id: uid(),
+    };
+  });
+
+  return shuffle([...standard, ...customs]);
 };
 
 /**
@@ -72,13 +93,14 @@ export const runMockAnalysis = ({
   file,
   skills,
   docType,
+  customChecks,
   onFinding,
   onProgress,
   onComplete,
   signal,
 }) => {
   return new Promise((resolve) => {
-    const findings = buildRunPlan({ skills, docType });
+    const findings = buildRunPlan({ skills, docType, customChecks });
     const total = findings.length;
     let index = 0;
 

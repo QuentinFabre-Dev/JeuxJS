@@ -13,7 +13,10 @@ import SkillCounts from './components/SkillCounts.jsx';
 import DocumentPreview from './components/DocumentPreview.jsx';
 import TopBar from './components/TopBar.jsx';
 
-import { runMockAnalysis } from './services/mockAnalysisService.js';
+import {
+  computeDocumentScore,
+  runMockAnalysis,
+} from './services/mockAnalysisService.js';
 import { SKILLS } from './data/constants.js';
 
 // App states: 'idle' | 'analyzing' | 'done'
@@ -22,14 +25,18 @@ export default function App() {
   const [selectedSkills, setSelectedSkills] = useState(
     SKILLS.map((s) => s.id) // all enabled by default
   );
+  const [customChecks, setCustomChecks] = useState([]);
   const [docType, setDocType] = useState('report');
+  const [serviceLine, setServiceLine] = useState('audit');
 
   const [status, setStatus] = useState('idle');
   const [progress, setProgress] = useState(0);
   const [findings, setFindings] = useState([]);
+  const [resolvedIds, setResolvedIds] = useState(() => new Set());
 
   const [skillFilter, setSkillFilter] = useState('all');
   const [priorityFilter, setPriorityFilter] = useState('all');
+  const [showResolved, setShowResolved] = useState(true);
   const [selectedFindingId, setSelectedFindingId] = useState(null);
 
   const abortRef = useRef(null);
@@ -43,11 +50,34 @@ export default function App() {
     );
   };
 
+  const addCustomCheck = (label) => {
+    setCustomChecks((current) =>
+      current.includes(label) ? current : [...current, label]
+    );
+  };
+
+  const removeCustomCheck = (label) => {
+    setCustomChecks((current) => current.filter((c) => c !== label));
+  };
+
+  const toggleResolved = (id) => {
+    setResolvedIds((current) => {
+      const next = new Set(current);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
+  };
+
   const handleStart = async () => {
     if (!file || selectedSkills.length === 0) return;
 
     // Reset
     setFindings([]);
+    setResolvedIds(new Set());
     setProgress(0);
     setSkillFilter('all');
     setPriorityFilter('all');
@@ -61,6 +91,7 @@ export default function App() {
       file,
       skills: selectedSkills,
       docType,
+      customChecks,
       signal: controller.signal,
       onFinding: (finding) => {
         setFindings((prev) => [finding, ...prev]);
@@ -80,6 +111,7 @@ export default function App() {
     setFile(null);
     setStatus('idle');
     setFindings([]);
+    setResolvedIds(new Set());
     setProgress(0);
     setSkillFilter('all');
     setPriorityFilter('all');
@@ -91,9 +123,26 @@ export default function App() {
     return findings.filter((f) => {
       if (skillFilter !== 'all' && f.skill !== skillFilter) return false;
       if (priorityFilter !== 'all' && f.priority !== priorityFilter) return false;
+      if (!showResolved && resolvedIds.has(f.id)) return false;
       return true;
     });
-  }, [findings, skillFilter, priorityFilter]);
+  }, [findings, skillFilter, priorityFilter, showResolved, resolvedIds]);
+
+  // Unresolved findings drive score + distribution stats.
+  const unresolvedFindings = useMemo(
+    () => findings.filter((f) => !resolvedIds.has(f.id)),
+    [findings, resolvedIds]
+  );
+
+  const currentScore = useMemo(
+    () => computeDocumentScore(unresolvedFindings),
+    [unresolvedFindings]
+  );
+
+  const hasCustomFindings = useMemo(
+    () => findings.some((f) => f.skill === 'custom'),
+    [findings]
+  );
 
   const isAnalyzing = status === 'analyzing';
   const showResults = status !== 'idle';
@@ -125,6 +174,11 @@ export default function App() {
                   onToggleSkill={toggleSkill}
                   docType={docType}
                   onDocTypeChange={setDocType}
+                  serviceLine={serviceLine}
+                  onServiceLineChange={setServiceLine}
+                  customChecks={customChecks}
+                  onAddCustomCheck={addCustomCheck}
+                  onRemoveCustomCheck={removeCustomCheck}
                 />
                 <button
                   type="button"
@@ -163,12 +217,17 @@ export default function App() {
               onClearFile={() => setFile(null)}
               selectedSkills={selectedSkills}
               onToggleSkill={toggleSkill}
+              customChecks={customChecks}
+              onRemoveCustomCheck={removeCustomCheck}
               docType={docType}
               onDocTypeChange={setDocType}
+              serviceLine={serviceLine}
+              onServiceLineChange={setServiceLine}
               isAnalyzing={isAnalyzing}
               onStart={handleStart}
               onStop={handleStop}
               onReset={handleReset}
+              score={currentScore}
             />
 
             {/* Progress bar */}
@@ -181,9 +240,13 @@ export default function App() {
 
             {/* Summary row */}
             <section className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <DocumentScore findings={findings} isAnalyzing={isAnalyzing} />
-              <PriorityDistribution findings={findings} />
-              <SkillCounts findings={findings} />
+              <DocumentScore
+                findings={unresolvedFindings}
+                isAnalyzing={isAnalyzing}
+                resolvedCount={resolvedIds.size}
+              />
+              <PriorityDistribution findings={unresolvedFindings} />
+              <SkillCounts findings={unresolvedFindings} />
             </section>
 
             {/* Main row: findings + document preview */}
@@ -198,6 +261,10 @@ export default function App() {
                     onPriorityFilterChange={setPriorityFilter}
                     total={findings.length}
                     visible={filteredFindings.length}
+                    hasCustomFindings={hasCustomFindings}
+                    showResolved={showResolved}
+                    onToggleShowResolved={setShowResolved}
+                    resolvedCount={resolvedIds.size}
                   />
                 </div>
 
@@ -206,6 +273,8 @@ export default function App() {
                   isAnalyzing={isAnalyzing}
                   selectedFindingId={selectedFindingId}
                   onSelectFinding={setSelectedFindingId}
+                  resolvedIds={resolvedIds}
+                  onToggleResolved={toggleResolved}
                 />
               </div>
 
@@ -215,6 +284,7 @@ export default function App() {
                   findings={findings}
                   selectedFindingId={selectedFindingId}
                   onSelectFinding={setSelectedFindingId}
+                  resolvedIds={resolvedIds}
                 />
               </aside>
             </section>

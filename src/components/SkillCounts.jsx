@@ -2,12 +2,22 @@ import { SKILLS, SKILL_STYLES } from '../data/constants.js';
 
 /**
  * Findings count per skill, displayed as a tidy list of chips.
+ * Custom user-defined checks are aggregated under a single row.
  */
 export default function SkillCounts({ findings }) {
-  const rows = SKILLS.map((s) => ({
+  const baseRows = SKILLS.map((s) => ({
     ...s,
     count: findings.filter((f) => f.skill === s.id).length,
   }));
+
+  const customCount = findings.filter((f) => f.skill === 'custom').length;
+  const rows =
+    customCount > 0
+      ? [
+          ...baseRows,
+          { id: 'custom', label: 'Custom', count: customCount },
+        ]
+      : baseRows;
 
   const max = Math.max(1, ...rows.map((r) => r.count));
 

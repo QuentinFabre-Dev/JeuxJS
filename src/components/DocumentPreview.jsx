@@ -14,6 +14,7 @@ export default function DocumentPreview({
   findings,
   selectedFindingId,
   onSelectFinding,
+  resolvedIds,
 }) {
   const scrollRef = useRef(null);
 
@@ -58,6 +59,7 @@ export default function DocumentPreview({
     }
 
     const isSelected = finding.id === selectedFindingId;
+    const isResolved = resolvedIds?.has(finding.id);
     const priority = PRIORITIES[finding.priority];
 
     return (
@@ -71,6 +73,8 @@ export default function DocumentPreview({
           'focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-400',
           isSelected
             ? 'bg-amber-100 ring-2 ring-amber-400 text-slate-900 shadow-soft'
+            : isResolved
+            ? 'bg-emerald-50/60 ring-1 ring-emerald-200/70 text-slate-500 line-through hover:bg-emerald-100/70'
             : 'bg-amber-50/70 ring-1 ring-amber-200/70 text-slate-700 hover:bg-amber-100/80 hover:ring-amber-300',
         ].join(' ')}
       >
