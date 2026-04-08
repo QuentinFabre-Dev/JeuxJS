@@ -3,12 +3,30 @@ import { PRIORITIES, SKILL_STYLES, SKILLS } from '../data/constants.js';
 
 const skillLabel = (id) => SKILLS.find((s) => s.id === id)?.label ?? id;
 
-export default function FindingCard({ finding }) {
+export default function FindingCard({ finding, isSelected, onClick }) {
   const priority = PRIORITIES[finding.priority];
   const confidencePct = Math.round(finding.confidence * 100);
 
   return (
-    <article className="card p-5 animate-fade-in-up hover:shadow-card transition-shadow">
+    <article
+      data-finding-id={finding.id}
+      role="button"
+      tabIndex={0}
+      onClick={onClick}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          onClick?.();
+        }
+      }}
+      className={[
+        'card p-5 animate-fade-in-up cursor-pointer transition-all scroll-mt-4',
+        'focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-400',
+        isSelected
+          ? 'ring-2 ring-brand-400 shadow-card -translate-y-0.5'
+          : 'hover:shadow-card hover:-translate-y-0.5 hover:border-slate-300/80',
+      ].join(' ')}
+    >
       {/* Header */}
       <header className="flex flex-wrap items-center gap-2 mb-3">
         <span className={`chip ${SKILL_STYLES[finding.skill]}`}>
@@ -23,7 +41,8 @@ export default function FindingCard({ finding }) {
           Page {finding.page}
         </span>
         <span className="ml-auto text-xs text-slate-500 tabular-nums">
-          Confiance · <span className="font-medium text-slate-700">{confidencePct}%</span>
+          Confiance ·{' '}
+          <span className="font-medium text-slate-700">{confidencePct}%</span>
         </span>
       </header>
 

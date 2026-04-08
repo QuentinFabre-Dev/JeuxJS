@@ -27,31 +27,33 @@ const jitterConfidence = (base) => {
 };
 
 /**
- * Sélectionne les findings à émettre en fonction des skills choisis
- * et du type de document. Le type de document influence légèrement
- * le nombre et la priorité (ex : un email professionnel a plus de
- * findings de "ton").
+ * Sélectionne les findings à émettre en fonction des skills choisis.
+ * Le type de document influence légèrement la confiance (boost contextuel)
+ * sans dupliquer les findings — chaque phrase n'est analysée qu'une fois,
+ * ce qui permet le mapping 1:1 avec la preview du document.
  */
 const buildRunPlan = ({ skills, docType }) => {
   const filtered = MOCK_FINDINGS_POOL.filter((f) => skills.includes(f.skill));
 
-  // Boost contextuel : si docType = email, on duplique légèrement les findings de ton.
-  let plan = [...filtered];
-  if (docType === 'email') {
-    plan = plan.concat(filtered.filter((f) => f.skill === 'tone'));
-  }
-  if (docType === 'procedure') {
-    plan = plan.concat(filtered.filter((f) => f.skill === 'consistency'));
-  }
-  if (docType === 'policy') {
-    plan = plan.concat(filtered.filter((f) => f.skill === 'clarity'));
-  }
+  // Boost contextuel : on augmente la confiance des findings dont le skill
+  // est particulièrement pertinent pour le type de document choisi.
+  const boostMap = {
+    email: 'tone',
+    procedure: 'consistency',
+    policy: 'clarity',
+    report: 'grammar',
+  };
+  const boostedSkill = boostMap[docType];
 
-  return shuffle(plan).map((f) => ({
-    ...f,
-    id: uid(),
-    confidence: Number(jitterConfidence(f.confidence).toFixed(2)),
-  }));
+  return shuffle(filtered).map((f) => {
+    const base = jitterConfidence(f.confidence);
+    const boosted = f.skill === boostedSkill ? Math.min(0.99, base + 0.04) : base;
+    return {
+      ...f,
+      id: uid(),
+      confidence: Number(boosted.toFixed(2)),
+    };
+  });
 };
 
 /**

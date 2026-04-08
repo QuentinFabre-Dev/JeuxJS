@@ -6,6 +6,7 @@ export default function AnalysisConfig({
   onToggleSkill,
   docType,
   onDocTypeChange,
+  compact = false,
 }) {
   return (
     <div className="card p-6 space-y-6">
@@ -19,7 +20,12 @@ export default function AnalysisConfig({
             {selectedSkills.length} sélectionné{selectedSkills.length > 1 ? 's' : ''}
           </span>
         </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+        <div
+          className={[
+            'grid gap-2',
+            compact ? 'grid-cols-1' : 'grid-cols-1 sm:grid-cols-2',
+          ].join(' ')}
+        >
           {SKILLS.map((skill) => {
             const checked = selectedSkills.includes(skill.id);
             return (
@@ -46,13 +52,15 @@ export default function AnalysisConfig({
                 >
                   {checked && <Check className="h-3 w-3" strokeWidth={3} />}
                 </span>
-                <span className="flex-1">
+                <span className="flex-1 min-w-0">
                   <span className="block text-sm font-medium text-slate-900">
                     {skill.label}
                   </span>
-                  <span className="block text-xs text-slate-500 mt-0.5 leading-snug">
-                    {skill.description}
-                  </span>
+                  {!compact && (
+                    <span className="block text-xs text-slate-500 mt-0.5 leading-snug">
+                      {skill.description}
+                    </span>
+                  )}
                 </span>
               </button>
             );

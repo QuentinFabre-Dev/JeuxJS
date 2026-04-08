@@ -9,6 +9,7 @@ import FindingsList from './components/FindingsList.jsx';
 import FindingsFilter from './components/FindingsFilter.jsx';
 import DocumentScore from './components/DocumentScore.jsx';
 import SummaryView from './components/SummaryView.jsx';
+import DocumentPreview from './components/DocumentPreview.jsx';
 
 import { runMockAnalysis } from './services/mockAnalysisService.js';
 import { SKILLS } from './data/constants.js';
@@ -27,6 +28,7 @@ export default function App() {
 
   const [skillFilter, setSkillFilter] = useState('all');
   const [priorityFilter, setPriorityFilter] = useState('all');
+  const [selectedFindingId, setSelectedFindingId] = useState(null);
 
   const abortRef = useRef(null);
 
@@ -47,6 +49,7 @@ export default function App() {
     setProgress(0);
     setSkillFilter('all');
     setPriorityFilter('all');
+    setSelectedFindingId(null);
     setStatus('analyzing');
 
     const controller = new AbortController();
@@ -78,6 +81,7 @@ export default function App() {
     setProgress(0);
     setSkillFilter('all');
     setPriorityFilter('all');
+    setSelectedFindingId(null);
   };
 
   // ── Filtrage ───────────────────────────────────────────────
@@ -97,7 +101,7 @@ export default function App() {
     <div className="min-h-screen flex flex-col">
       <Header />
 
-      <main className="flex-1 mx-auto max-w-6xl w-full px-6 py-10">
+      <main className="flex-1 mx-auto max-w-7xl w-full px-6 py-10">
         {/* Hero */}
         <section className="mb-8">
           <h2 className="text-2xl sm:text-3xl font-semibold tracking-tight text-slate-900">
@@ -110,56 +114,29 @@ export default function App() {
           </p>
         </section>
 
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-          {/* ── Colonne configuration ───────────────────────── */}
-          <aside className="lg:col-span-5 space-y-6">
-            <UploadZone file={file} onFileChange={setFile} />
+        {!showResults ? (
+          /* ─── État INITIAL : 5 / 7 ─── */
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+            <aside className="lg:col-span-5 space-y-6">
+              <UploadZone file={file} onFileChange={setFile} />
+              <AnalysisConfig
+                selectedSkills={selectedSkills}
+                onToggleSkill={toggleSkill}
+                docType={docType}
+                onDocTypeChange={setDocType}
+              />
+              <button
+                type="button"
+                onClick={handleStart}
+                disabled={!file || selectedSkills.length === 0}
+                className="btn-primary w-full"
+              >
+                <Play className="h-4 w-4" strokeWidth={2.5} />
+                Lancer l'analyse
+              </button>
+            </aside>
 
-            <AnalysisConfig
-              selectedSkills={selectedSkills}
-              onToggleSkill={toggleSkill}
-              docType={docType}
-              onDocTypeChange={setDocType}
-            />
-
-            {/* Action bar */}
-            <div className="flex items-center gap-2">
-              {!isAnalyzing ? (
-                <button
-                  type="button"
-                  onClick={handleStart}
-                  disabled={!file || selectedSkills.length === 0}
-                  className="btn-primary flex-1"
-                >
-                  <Play className="h-4 w-4" strokeWidth={2.5} />
-                  Lancer l'analyse
-                </button>
-              ) : (
-                <button
-                  type="button"
-                  onClick={handleStop}
-                  className="btn-primary flex-1 !bg-slate-900 hover:!bg-slate-800"
-                >
-                  <Square className="h-4 w-4" strokeWidth={2.5} />
-                  Arrêter
-                </button>
-              )}
-              {showResults && (
-                <button
-                  type="button"
-                  onClick={handleReset}
-                  className="btn-ghost"
-                  title="Réinitialiser"
-                >
-                  <RotateCcw className="h-4 w-4" />
-                </button>
-              )}
-            </div>
-          </aside>
-
-          {/* ── Colonne résultats ───────────────────────────── */}
-          <section className="lg:col-span-7 space-y-4">
-            {!showResults && (
+            <section className="lg:col-span-7">
               <div className="card p-12 text-center">
                 <div className="mx-auto h-12 w-12 rounded-full bg-brand-50 grid place-items-center mb-4">
                   <Play className="h-5 w-5 text-brand-600" />
@@ -169,28 +146,83 @@ export default function App() {
                 </p>
                 <p className="text-xs text-slate-500 mt-1 max-w-sm mx-auto">
                   Importez un fichier puis lancez l'analyse pour voir
-                  apparaître les findings en temps réel.
+                  apparaître les findings en temps réel, ainsi que leur
+                  emplacement dans le document.
                 </p>
               </div>
-            )}
+            </section>
+          </div>
+        ) : (
+          /* ─── État ACTIF : 3 / 5 / 4 ─── */
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+            {/* Colonne 1 — Configuration compacte */}
+            <aside className="lg:col-span-3 space-y-4">
+              <UploadZone file={file} onFileChange={setFile} />
+              <AnalysisConfig
+                compact
+                selectedSkills={selectedSkills}
+                onToggleSkill={toggleSkill}
+                docType={docType}
+                onDocTypeChange={setDocType}
+              />
+              <div className="flex items-center gap-2">
+                {isAnalyzing ? (
+                  <button
+                    type="button"
+                    onClick={handleStop}
+                    className="btn-primary flex-1 !bg-slate-900 hover:!bg-slate-800"
+                  >
+                    <Square className="h-4 w-4" strokeWidth={2.5} />
+                    Arrêter
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={handleStart}
+                    disabled={!file || selectedSkills.length === 0}
+                    className="btn-primary flex-1"
+                  >
+                    <Play className="h-4 w-4" strokeWidth={2.5} />
+                    Relancer
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={handleReset}
+                  className="btn-ghost"
+                  title="Réinitialiser"
+                  aria-label="Réinitialiser"
+                >
+                  <RotateCcw className="h-4 w-4" />
+                </button>
+              </div>
+            </aside>
 
-            {showResults && (
-              <>
-                {isAnalyzing && (
-                  <AnalysisProgress
-                    progress={progress}
-                    count={findings.length}
+            {/* Colonne 2 — Document preview (sticky) */}
+            <section className="lg:col-span-5 lg:sticky lg:top-20 lg:self-start">
+              <DocumentPreview
+                findings={findings}
+                selectedFindingId={selectedFindingId}
+                onSelectFinding={setSelectedFindingId}
+              />
+            </section>
+
+            {/* Colonne 3 — Analyse + findings */}
+            <section className="lg:col-span-4 space-y-4">
+              {isAnalyzing && (
+                <AnalysisProgress
+                  progress={progress}
+                  count={findings.length}
+                />
+              )}
+
+              {findings.length > 0 && (
+                <>
+                  <DocumentScore
+                    findings={findings}
+                    isAnalyzing={isAnalyzing}
                   />
-                )}
-
-                {findings.length > 0 && (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <DocumentScore findings={findings} isAnalyzing={isAnalyzing} />
-                    <SummaryView findings={findings} />
-                  </div>
-                )}
-
-                {findings.length > 0 && (
+                  <SummaryView findings={findings} />
                   <FindingsFilter
                     skillFilter={skillFilter}
                     onSkillFilterChange={setSkillFilter}
@@ -199,20 +231,22 @@ export default function App() {
                     total={findings.length}
                     visible={filteredFindings.length}
                   />
-                )}
+                </>
+              )}
 
-                <FindingsList
-                  findings={filteredFindings}
-                  isAnalyzing={isAnalyzing}
-                />
-              </>
-            )}
-          </section>
-        </div>
+              <FindingsList
+                findings={filteredFindings}
+                isAnalyzing={isAnalyzing}
+                selectedFindingId={selectedFindingId}
+                onSelectFinding={setSelectedFindingId}
+              />
+            </section>
+          </div>
+        )}
       </main>
 
       <footer className="border-t border-slate-200/70 bg-white/50">
-        <div className="mx-auto max-w-6xl px-6 py-4 text-xs text-slate-400 flex items-center justify-between">
+        <div className="mx-auto max-w-7xl px-6 py-4 text-xs text-slate-400 flex items-center justify-between">
           <span>QualiScan · démo client (données fictives)</span>
           <span>© {new Date().getFullYear()}</span>
         </div>
