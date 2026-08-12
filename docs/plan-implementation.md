@@ -1,8 +1,14 @@
 # Plan d'implémentation — chantiers restants
 
-Ce document couvre les six sujets laissés de côté lors du lot précédent :
-diff mot à mot, historique et comparaison de versions, OCR, actions groupées,
-piège de focus de la modale, interface bilingue.
+Ce document couvre les cinq sujets laissés de côté lors du lot précédent :
+diff mot à mot, OCR, actions groupées, piège de focus de la modale, interface
+bilingue.
+
+L'historique des analyses et la comparaison de versions ont été écartés : ils
+supposaient de conserver le texte des documents et les findings sur le poste,
+et le choix a été fait de ne rien stocker pour l'instant. À ce jour l'app ne
+persiste que des préférences (réglages Ollama, playbooks) — aucun contenu de
+document.
 
 Chaque chantier est décrit pour être pris isolément : objectif, conception,
 fichiers touchés, étapes, pièges connus, tests attendus.
@@ -18,7 +24,11 @@ fichiers touchés, étapes, pièges connus, tests attendus.
 3. **Le texte affiché vient du document, jamais du modèle.** Le mécanisme des
    identifiants de phrase (`p2s5`) est la garantie du surlignage ; aucun
    chantier ne doit le contourner.
-4. **Terminé = `npm test` vert, `npm run build` vert, parcours vérifié au
+4. **Aucune persistance du contenu des documents.** Ni texte extrait, ni
+   findings, ni aperçu : tout disparaît à la fermeture de l'onglet. Seules les
+   préférences de l'utilisateur sont conservées. Un chantier qui aurait besoin
+   de stocker du contenu doit être rediscuté, pas contourné.
+5. **Terminé = `npm test` vert, `npm run build` vert, parcours vérifié au
    navigateur.** Les fonctions pures ajoutées viennent avec leurs cas dans
    `tests/unit.mjs`.
 
@@ -27,13 +37,13 @@ fichiers touchés, étapes, pièges connus, tests attendus.
 | Lot | Contenu | Effort | Pourquoi cet ordre |
 | --- | --- | --- | --- |
 | 1 | Piège de focus + diff mot à mot | ~1 j | Deux gains immédiats, sans dépendance, sans décision d'architecture |
-| 2 | Actions groupées | ~1,5 j | Rend le triage praticable sur les gros documents, prépare l'usage réel |
-| 3 | Historique et comparaison | ~3 j | Premier vrai stockage : à faire avant l'i18n qui touchera ses écrans |
-| 4 | Interface FR/EN | ~2,5 j | Passe transversale : la faire quand les écrans sont stabilisés |
-| 5 | OCR | ~2,5 j | Autonome, coûteux en poids ; peut être livré à part |
+| 2 | Actions groupées | ~1,5 j | Rend le triage praticable sur les gros documents |
+| 3 | Interface FR/EN | ~2,5 j | Passe transversale : la faire une fois les écrans stabilisés par les lots 1 et 2 |
+| 4 | OCR | ~2,5 j | Autonome, coûteux en poids ; peut être livré à part ou abandonné |
 
-L'ordre n'est contraignant qu'entre 3 et 4 : traduire des écrans qui vont
-changer est du travail fait deux fois.
+Total : environ 7,5 jours. Le seul ordre qui compte est de placer l'i18n après
+les lots qui ajoutent des écrans : traduire ce qui va changer est du travail
+fait deux fois.
 
 ---
 
@@ -99,116 +109,7 @@ l'original (invariant le plus utile).
 
 ---
 
-## 2. Historique et comparaison de versions
-
-### Objectif
-
-Retrouver les analyses passées et répondre à « qu'est-ce qui a changé depuis la
-version précédente du document ? » : combien de findings corrigés, combien de
-nouveaux, lesquels persistent.
-
-### Conception
-
-**Stockage : IndexedDB**, pas `localStorage`. Un run contient les findings, les
-états de triage et de quoi réafficher le contexte : on dépasse vite le quota de
-5 Mo, et `localStorage` est synchrone donc bloquant.
-
-Nouveau module `src/services/reviewStore.js`, écrit directement sur l'API
-IndexedDB (une soixantaine de lignes, pas de dépendance) :
-
-```js
-openStore()                     // base 'ryder', magasin 'runs', version 1
-saveRun(run)                    // → id
-listRuns({ docKey })            // runs d'un même document, du plus récent au plus ancien
-getRun(id)
-deleteRun(id) / clearRuns()
-```
-
-Forme d'un run :
-
-```js
-{
-  id, savedAt, docKey, docHash,
-  fileName, pageCount, sentenceCount,
-  engine, model, docType, serviceLine, language,
-  score, findings, states,        // states sérialisé en tableau de paires
-}
-```
-
-- `docKey` = nom de fichier normalisé (minuscules, extension retirée, suffixes
-  `-v2`, `_final`, ` (1)` retirés) : c'est ce qui regroupe les versions
-  successives d'un même livrable.
-- `docHash` = empreinte du texte extrait (`crypto.subtle.digest('SHA-256', …)`)
-  : sert à reconnaître une analyse relancée sur un document **identique** et à
-  éviter de comparer un document avec lui-même.
-
-**Comparaison** : nouveau module pur `src/services/compareRuns.js`.
-
-```js
-compareRuns(previous, current)
-// → { fixed: [...], introduced: [...], persisting: [{ before, after }] }
-```
-
-Appariement en deux temps, car les phrases changent d'une version à l'autre :
-
-1. clé exacte `normalise(original) + '::' + skill`, où `normalise` met en
-   minuscules, réduit les espaces et retire la ponctuation ;
-2. pour les restes, similarité de Dice sur les bigrammes de caractères, seuil
-   0,8, appariement glouton du meilleur score au moins bon.
-
-**Interface** :
-
-- `src/components/HistoryPanel.jsx` : liste des runs du même `docKey` (date,
-  modèle, score, nombre de findings), bouton *Comparer*, bouton *Supprimer*, et
-  un *Effacer l'historique* global.
-- `src/components/RunComparison.jsx` : trois compteurs (corrigés, nouveaux,
-  persistants) et la liste correspondante, chaque entrée cliquable vers le
-  finding.
-- Point d'entrée : un bouton *Historique* dans `TopBar.jsx`, à côté d'*Excel*.
-
-**Sauvegarde** : à la fin d'une analyse (`handleStart`, branche non annulée) et
-à chaque changement de triage avec anti-rebond de quelques secondes, pour que
-les décisions ne soient pas perdues en cas de fermeture d'onglet.
-
-**Rétention** : 20 runs par `docKey`, 200 au total, purge du plus ancien à
-l'écriture. Écrire aussi la taille estimée dans le panneau, et prévoir la
-gestion de `QuotaExceededError` (purger puis réessayer une fois).
-
-### Fichiers
-
-- créer `src/services/reviewStore.js`, `src/services/compareRuns.js`,
-  `src/components/HistoryPanel.jsx`, `src/components/RunComparison.jsx`,
-  `src/hooks/useReviewHistory.js` ;
-- modifier `src/App.jsx` (sauvegarde, chargement d'un run, état de comparaison),
-  `src/components/TopBar.jsx` (bouton), `README.md`.
-
-### Pièges
-
-- **Confidentialité** : l'historique conserve le texte de documents
-  potentiellement sensibles dans le navigateur. L'*Effacer l'historique* n'est
-  pas optionnel, et le README doit le dire explicitement.
-- Recharger un run ancien doit remettre l'app dans un état cohérent : soit on
-  restaure aussi le `documentModel` (donc on le stocke, ce qui pèse), soit on
-  ouvre le run en **lecture seule** sans aperçu de document. Retenir la seconde
-  option : moins de stockage, et l'aperçu sans le fichier d'origine serait de
-  toute façon trompeur.
-- Les identifiants de findings sont régénérés à chaque run : ne jamais les
-  utiliser comme clé d'appariement.
-
-### Tests
-
-- `tests/unit.mjs` : `compareRuns` sur documents identiques (tout persistant),
-  finding corrigé, finding nouveau, phrase légèrement reformulée (appariement
-  par similarité), changement de gravité entre deux runs ; `docKey` sur
-  `Rapport_final (2).docx` et `rapport-final-v2.docx`.
-- Navigateur : deux analyses successives sur deux variantes d'un fichier, puis
-  vérification des trois compteurs et de la persistance après rechargement.
-
-**Effort : L — 3 jours.**
-
----
-
-## 3. OCR des PDF scannés
+## 2. OCR des PDF scannés
 
 ### Objectif
 
@@ -278,7 +179,7 @@ renforcée pour ces pages.
 
 ---
 
-## 4. Actions groupées
+## 3. Actions groupées
 
 ### Objectif
 
@@ -327,7 +228,7 @@ sélectionner puis d'accepter ou rejeter en une fois, avec annulation.
 
 ---
 
-## 5. Piège de focus de la modale
+## 4. Piège de focus de la modale
 
 ### Objectif
 
@@ -356,8 +257,8 @@ l'ouverture, et blocage du défilement du corps de page.
 
 - La modale est déjà rendue dans un portail : `aria-hidden` doit viser le
   conteneur applicatif, pas un ancêtre commun au dialogue.
-- Le hook servira aux futurs dialogues (historique, comparaison) : le garder
-  générique dès le départ.
+- Le hook servira à tout dialogue ajouté par la suite : le garder générique dès
+  le départ plutôt que de le coder pour cette seule modale.
 
 ### Tests
 
@@ -369,7 +270,7 @@ badge.
 
 ---
 
-## 6. Interface FR/EN
+## 5. Interface FR/EN
 
 ### Objectif
 
@@ -416,7 +317,7 @@ pour ne pas retoucher la signature deux fois.
 
 - `constants.js` mélange identifiants et libellés : garder les `id` intacts (ils
   circulent dans les prompts et les données stockées) et ne traduire que les
-  `label`. Traduire un `id` casserait l'historique et les prompts.
+  `label`. Traduire un `id` casserait les prompts envoyés au modèle.
 - Les prompts envoyés au modèle restent en anglais : c'est la langue sur
   laquelle ces modèles sont les plus fiables, et `languageInstruction` gère déjà
   la langue de sortie. Ne pas confondre les deux.
@@ -437,13 +338,9 @@ pour ne pas retoucher la signature deux fois.
 
 ## Points à trancher avant de commencer
 
-1. **Historique** : la lecture seule d'un run passé est-elle suffisante, ou
-   faut-il pouvoir reprendre le triage sur une analyse ancienne ? La seconde
-   option impose de stocker le modèle de document, donc un volume nettement
-   supérieur.
-2. **OCR** : embarquer les 15 Mo de données de langue dans le dépôt, ou fournir
+1. **OCR** : embarquer les 15 Mo de données de langue dans le dépôt, ou fournir
    un script de récupération à l'installation ? Un dépôt propre plaide pour le
    script, l'usage hors ligne immédiat pour l'embarquement.
-3. **i18n** : traduit-on aussi le contenu produit par le modèle dans l'export,
+2. **i18n** : traduit-on aussi le contenu produit par le modèle dans l'export,
    ou seulement l'ossature de l'interface ? Les explications sont déjà dans la
    langue du document, ce qui peut donner un classeur bilingue.

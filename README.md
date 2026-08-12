@@ -112,11 +112,15 @@ Each built-in check can also be **re-run on its own** (the circular arrow in the
 
 ## Next steps
 
-Six items are planned but not implemented yet — word-level diff, review history
-and version comparison, OCR for scanned PDFs, bulk actions, dialog focus trap and
-a French/English interface. Each one is specified in
+Five items are planned but not implemented yet — word-level diff, OCR for
+scanned PDFs, bulk actions, dialog focus trap and a French/English interface.
+Each one is specified in
 [docs/plan-implementation.md](docs/plan-implementation.md): design, files to
 touch, known pitfalls, expected tests and effort.
+
+Nothing about a document is persisted: the extracted text, the findings and the
+review live in the tab and are gone when it closes. Only preferences (Ollama
+settings, playbooks) are stored locally.
 
 ## Troubleshooting
 
