@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 
 import { PROXY_BASE_URL } from '../config/ollama.js';
+import useFocusTrap from '../hooks/useFocusTrap.js';
 
 const STATUS_STYLES = {
   checking: {
@@ -55,12 +56,8 @@ export default function OllamaSettings({
 
   useEffect(() => setDraftUrl(settings.baseUrl), [settings.baseUrl]);
 
-  useEffect(() => {
-    if (!open) return undefined;
-    const onKeyDown = (event) => event.key === 'Escape' && setOpen(false);
-    window.addEventListener('keydown', onKeyDown);
-    return () => window.removeEventListener('keydown', onKeyDown);
-  }, [open]);
+  // Escape handling lives in the focus trap, together with the Tab cycling.
+  const dialogRef = useFocusTrap(open, () => setOpen(false));
 
   const isDemo = settings.engine === 'demo';
   const style = isDemo
@@ -105,15 +102,19 @@ export default function OllamaSettings({
             role="presentation"
           >
             <div
+              ref={dialogRef}
               className="card w-full max-w-lg p-6 max-h-[90vh] overflow-y-auto"
               onClick={(event) => event.stopPropagation()}
               role="dialog"
               aria-modal="true"
-              aria-label="Ollama settings"
+              aria-labelledby="ollama-settings-title"
             >
               <div className="flex items-start justify-between mb-5">
                 <div>
-                  <h2 className="text-base font-semibold text-slate-900">
+                  <h2
+                    id="ollama-settings-title"
+                    className="text-base font-semibold text-slate-900"
+                  >
                     Local AI engine
                   </h2>
                   <p className="text-xs text-slate-500 mt-0.5">

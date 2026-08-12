@@ -301,12 +301,10 @@ choix assumé ne se transforme pas en oubli.
 - **Historique des analyses et comparaison de versions.** Supposait de conserver
   le texte des documents et les findings sur le poste ; incompatible avec la
   contrainte de non-persistance ci-dessus.
-- **Piège de focus des boîtes de dialogue.** L'accessibilité n'est pas une
-  priorité à ce stade. Pour mémoire, le défaut concret : la modale de réglages
-  ouverte, `Tab` finit par sortir du dialogue et parcourir la page derrière, et
-  le focus n'est pas rendu au bouton d'origine à la fermeture. Correctif estimé
-  à une demi-journée (`useFocusTrap`, `aria-labelledby`, fond inerte) le jour où
-  le sujet remonte.
+- **Revue d'accessibilité au sens large** (contrastes, annonces, navigation
+  complète au clavier hors liste de findings). Pas une priorité à ce stade.
+  Le piège de focus des dialogues, lui, a finalement été corrigé : voir
+  `src/hooks/useFocusTrap.js`.
 
 ## Points à trancher avant de commencer
 
