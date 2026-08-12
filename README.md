@@ -112,9 +112,9 @@ Each built-in check can also be **re-run on its own** (the circular arrow in the
 
 ## Next steps
 
-Five items are planned but not implemented yet — word-level diff, OCR for
-scanned PDFs, bulk actions, dialog focus trap and a French/English interface.
-Each one is specified in
+Four items are planned but not implemented yet — word-level diff, OCR for
+scanned PDFs, bulk actions and a French/English interface. Each one is specified
+in
 [docs/plan-implementation.md](docs/plan-implementation.md): design, files to
 touch, known pitfalls, expected tests and effort.
 

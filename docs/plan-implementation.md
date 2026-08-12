@@ -1,8 +1,7 @@
 # Plan d'implémentation — chantiers restants
 
-Ce document couvre les cinq sujets laissés de côté lors du lot précédent :
-diff mot à mot, OCR, actions groupées, piège de focus de la modale, interface
-bilingue.
+Ce document couvre les quatre sujets retenus parmi ceux laissés de côté lors du
+lot précédent : diff mot à mot, OCR, actions groupées, interface bilingue.
 
 L'historique des analyses et la comparaison de versions ont été écartés : ils
 supposaient de conserver le texte des documents et les findings sur le poste,
@@ -36,14 +35,14 @@ fichiers touchés, étapes, pièges connus, tests attendus.
 
 | Lot | Contenu | Effort | Pourquoi cet ordre |
 | --- | --- | --- | --- |
-| 1 | Piège de focus + diff mot à mot | ~1 j | Deux gains immédiats, sans dépendance, sans décision d'architecture |
+| 1 | Diff mot à mot | ~0,5 j | Gain immédiat, sans dépendance, sans décision d'architecture |
 | 2 | Actions groupées | ~1,5 j | Rend le triage praticable sur les gros documents |
 | 3 | Interface FR/EN | ~2,5 j | Passe transversale : la faire une fois les écrans stabilisés par les lots 1 et 2 |
 | 4 | OCR | ~2,5 j | Autonome, coûteux en poids ; peut être livré à part ou abandonné |
 
-Total : environ 7,5 jours. Le seul ordre qui compte est de placer l'i18n après
-les lots qui ajoutent des écrans : traduire ce qui va changer est du travail
-fait deux fois.
+Total : environ 7 jours. Le seul ordre qui compte est de placer l'i18n après les
+lots qui ajoutent des écrans : traduire ce qui va changer est du travail fait
+deux fois.
 
 ---
 
@@ -78,8 +77,8 @@ Nouveau composant `src/components/DiffText.jsx` :
 - `side="original"` rend les segments `equal` + `removed`, les retraits en
   `<del>` ;
 - `side="suggestion"` rend `equal` + `added`, les ajouts en `<ins>`.
-- Les balises `<del>` / `<ins>` portent l'information pour les lecteurs
-  d'écran : la couleur seule ne doit jamais être le seul signal.
+- Utiliser `<del>` / `<ins>` plutôt que des `<span>` ne coûte rien et donne la
+  sémantique exacte de ce qui est rendu.
 
 ### Fichiers
 
@@ -228,49 +227,7 @@ sélectionner puis d'accepter ou rejeter en une fois, avec annulation.
 
 ---
 
-## 4. Piège de focus de la modale
-
-### Objectif
-
-La boîte de réglages Ollama se ferme à l'échap, mais le focus clavier continue
-de circuler derrière elle et n'est pas rendu au badge à la fermeture.
-
-### Conception
-
-Nouveau `src/hooks/useFocusTrap.js` :
-
-- mémorise `document.activeElement` à l'ouverture ;
-- place le focus sur le premier élément focusable du dialogue ;
-- intercepte `Tab` / `Maj+Tab` pour boucler à l'intérieur ;
-- restaure le focus initial au démontage.
-
-À compléter dans `OllamaSettings.jsx` : `aria-labelledby` pointant sur le titre
-(plutôt que `aria-label`), `aria-hidden` sur le contenu de fond pendant
-l'ouverture, et blocage du défilement du corps de page.
-
-### Fichiers
-
-- créer `src/hooks/useFocusTrap.js` ;
-- modifier `src/components/OllamaSettings.jsx`.
-
-### Pièges
-
-- La modale est déjà rendue dans un portail : `aria-hidden` doit viser le
-  conteneur applicatif, pas un ancêtre commun au dialogue.
-- Le hook servira à tout dialogue ajouté par la suite : le garder générique dès
-  le départ plutôt que de le coder pour cette seule modale.
-
-### Tests
-
-Navigateur : ouverture, `Tab` répété qui reste dans le dialogue, `Maj+Tab`
-depuis le premier élément qui revient au dernier, `Échap` qui rend le focus au
-badge.
-
-**Effort : S — une demi-journée.**
-
----
-
-## 5. Interface FR/EN
+## 4. Interface FR/EN
 
 ### Objectif
 
@@ -335,6 +292,21 @@ pour ne pas retoucher la signature deux fois.
 **Effort : M/L — 2,5 jours.**
 
 ---
+
+## Écarté pour l'instant
+
+Ces sujets ont été identifiés puis mis de côté. Ils sont listés ici pour qu'un
+choix assumé ne se transforme pas en oubli.
+
+- **Historique des analyses et comparaison de versions.** Supposait de conserver
+  le texte des documents et les findings sur le poste ; incompatible avec la
+  contrainte de non-persistance ci-dessus.
+- **Piège de focus des boîtes de dialogue.** L'accessibilité n'est pas une
+  priorité à ce stade. Pour mémoire, le défaut concret : la modale de réglages
+  ouverte, `Tab` finit par sortir du dialogue et parcourir la page derrière, et
+  le focus n'est pas rendu au bouton d'origine à la fermeture. Correctif estimé
+  à une demi-journée (`useFocusTrap`, `aria-labelledby`, fond inerte) le jour où
+  le sujet remonte.
 
 ## Points à trancher avant de commencer
 
