@@ -11,8 +11,11 @@ export default function DocumentScore({
   findings,
   isAnalyzing,
   resolvedCount = 0,
+  score: providedScore,
 }) {
-  const score = computeDocumentScore(findings);
+  // The caller computes the length-calibrated score; fall back to the
+  // absolute scale when it does not (demo mode).
+  const score = providedScore ?? computeDocumentScore(findings);
   const { label, text, ring } = scoreColor(score);
 
   // SVG circle: circumference = 2πr
@@ -59,7 +62,7 @@ export default function DocumentScore({
             ? 'Live score, updated as findings come in.'
             : `Based on ${findings.length} open finding${
                 findings.length === 1 ? '' : 's'
-              }${resolvedCount > 0 ? ` · ${resolvedCount} resolved` : ''}.`}
+              }${resolvedCount > 0 ? ` · ${resolvedCount} triaged` : ''}.`}
         </p>
       </div>
     </div>

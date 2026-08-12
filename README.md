@@ -22,6 +22,19 @@ npm run dev          # http://localhost:5173
 The badge in the header shows the connection state. Green (`Local model`) means
 you can upload a document and hit **Analyse**.
 
+## Reviewing a document
+
+1. **Triage each finding.** Accept (the correction is right) or reject (the model
+   is wrong). Only open findings weigh on the quality score, so the score
+   reflects what is genuinely left to fix. `j` / `k` move through the list,
+   `a` accepts, `r` rejects.
+2. **Sort and filter.** Document order by default, or by priority / confidence.
+   The confidence slider hides the calls the model was unsure about — useful
+   with smaller models.
+3. **Export to Excel.** One workbook with a *Summary* sheet (score, counts,
+   context), a *Findings* sheet (filterable, with a status dropdown and an empty
+   reviewer-comment column) and a *By type* breakdown.
+
 ## How it works
 
 1. **Parsing (browser).** `src/services/documentParser.js` extracts text with
@@ -34,10 +47,21 @@ you can upload a document and hit **Analyse**.
    even when the model paraphrases.
 3. **Streaming.** The NDJSON response is scanned as it arrives, so findings pop
    into the list one by one instead of all at the end.
-4. **Rendering.** Findings are normalised (unknown ids, unknown skills,
+4. **Cross-page pass.** Per-batch prompts structurally cannot see that an
+   acronym is defined twice or that a figure contradicts page 12. A final pass
+   sends an index of the document's headings, figures and acronyms and asks only
+   for cross-page inconsistencies.
+5. **Rendering.** Findings are normalised (unknown ids, unknown skills,
    suggestions identical to the original and duplicates are dropped), then fed to
    the existing UI: score, priority distribution, per-type counts and the
    clickable document preview.
+
+The document language is detected on upload and injected into the prompt, so a
+French document gets French suggestions and French-language conventions. Override
+it in the analysis panel if the detection is wrong.
+
+The quality score is normalised by document length: 20 findings in a 2-page memo
+and 20 findings in a 100-page report are not the same defect density.
 
 ## Configuration
 
@@ -64,12 +88,18 @@ To call Ollama directly instead of through the proxy, set the endpoint to
 `http://localhost:11434` in the settings dialog and start the server with
 `OLLAMA_ORIGINS=* ollama serve`.
 
-## Custom checks
+## Custom checks and playbooks
 
 Beyond the five built-in skills (grammar, spelling, consistency, clarity, tone),
 type any requirement in **Add a custom check** — "GDPR compliance", "no client
 name in the body", "figures must match the appendix". It is injected into the
 prompt and produces findings tagged with that label.
+
+Save a set of custom checks as a **playbook** to reuse it on the next document;
+playbooks are stored locally and carry their service line with them.
+
+Each built-in check can also be **re-run on its own** (the circular arrow in the
+*By type* panel): tightening one criterion no longer costs a full re-analysis.
 
 ## Model choice
 

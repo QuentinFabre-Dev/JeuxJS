@@ -1,4 +1,13 @@
-import { CheckCircle2, FileText, Play, RotateCcw, Square, X } from 'lucide-react';
+import {
+  CheckCircle2,
+  FileSpreadsheet,
+  FileText,
+  Loader2,
+  Play,
+  RotateCcw,
+  Square,
+  X,
+} from 'lucide-react';
 
 import { DOC_TYPES, SERVICE_LINES, SKILLS } from '../data/constants.js';
 import SkillChip from './SkillChip.jsx';
@@ -31,6 +40,9 @@ export default function TopBar({
   onStart,
   onStop,
   onReset,
+  onExport,
+  isExporting,
+  canExport,
   score,
 }) {
   const readyToSend = typeof score === 'number' && score >= 80;
@@ -144,6 +156,21 @@ export default function TopBar({
 
       {/* Actions */}
       <div className="ml-auto flex items-center gap-2">
+        <button
+          type="button"
+          onClick={onExport}
+          disabled={!canExport || isExporting}
+          className="btn-ghost ring-1 ring-slate-200"
+          title="Export the review to Excel"
+        >
+          {isExporting ? (
+            <Loader2 className="h-4 w-4 animate-spin" />
+          ) : (
+            <FileSpreadsheet className="h-4 w-4" />
+          )}
+          Excel
+        </button>
+
         {isAnalyzing ? (
           <button
             type="button"

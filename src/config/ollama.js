@@ -11,12 +11,16 @@
 
 const STORAGE_KEY = 'ryder.ollama.settings';
 
+// `import.meta.env` only exists under Vite; guarding it keeps these modules
+// importable from plain Node (tests, scripts).
+const env = import.meta.env ?? {};
+
 export const PROXY_BASE_URL = '/ollama';
 
 export const DEFAULT_SETTINGS = {
   // '/ollama' → Vite proxy. Any absolute URL → direct call (needs OLLAMA_ORIGINS).
-  baseUrl: import.meta.env.VITE_OLLAMA_BASE_URL || PROXY_BASE_URL,
-  model: import.meta.env.VITE_OLLAMA_MODEL || 'llama3.1:8b',
+  baseUrl: env.VITE_OLLAMA_BASE_URL || PROXY_BASE_URL,
+  model: env.VITE_OLLAMA_MODEL || 'llama3.1:8b',
   temperature: 0.2,
   numCtx: 8192,
   // Number of document pages sent to the model in a single request.
