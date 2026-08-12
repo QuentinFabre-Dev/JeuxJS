@@ -112,9 +112,11 @@ Each built-in check can also be **re-run on its own** (the circular arrow in the
 
 ## Next steps
 
-Four items are planned but not implemented yet — word-level diff, OCR for
-scanned PDFs, bulk actions and a French/English interface. Each one is specified
-in
+The next milestone is reviewing **inside the document**: seeing each finding
+highlighted at its exact place in the file, editing it there, and downloading a
+corrected document (a true round-trip for DOCX; locate-and-annotate for PDF).
+Then come word-level diff, bulk actions, a French/English interface and OCR for
+scanned PDFs. Each one is specified in
 [docs/plan-implementation.md](docs/plan-implementation.md): design, files to
 touch, known pitfalls, expected tests and effort.
 

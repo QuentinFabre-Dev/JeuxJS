@@ -1,7 +1,8 @@
 # Plan d'implémentation — chantiers restants
 
-Ce document couvre les quatre sujets retenus parmi ceux laissés de côté lors du
-lot précédent : diff mot à mot, OCR, actions groupées, interface bilingue.
+Ce document couvre l'axe prioritaire — corriger directement dans le document —
+puis les sujets retenus lors du lot précédent : diff mot à mot, OCR, actions
+groupées, interface bilingue.
 
 L'historique des analyses et la comparaison de versions ont été écartés : ils
 supposaient de conserver le texte des documents et les findings sur le poste,
@@ -35,18 +36,179 @@ fichiers touchés, étapes, pièges connus, tests attendus.
 
 | Lot | Contenu | Effort | Pourquoi cet ordre |
 | --- | --- | --- | --- |
-| 1 | Diff mot à mot | ~0,5 j | Gain immédiat, sans dépendance, sans décision d'architecture |
-| 2 | Actions groupées | ~1,5 j | Rend le triage praticable sur les gros documents |
-| 3 | Interface FR/EN | ~2,5 j | Passe transversale : la faire une fois les écrans stabilisés par les lots 1 et 2 |
-| 4 | OCR | ~2,5 j | Autonome, coûteux en poids ; peut être livré à part ou abandonné |
+| 1 | Ancres de position dans l'extraction | ~1,5 j | Socle de tout le reste : sans elles, impossible de situer une erreur dans le fichier |
+| 2 | Rendu fidèle du document + surlignage in situ | ~2 j | C'est là que la revue bascule dans le document |
+| 3 | Correction en place + export du document corrigé | ~3 j | La finalité : ressortir un fichier corrigé, pas une liste |
+| 4 | Diff mot à mot | ~0,5 j | Prend toute sa valeur une fois la correction éditable en ligne |
+| 5 | Actions groupées | ~1,5 j | Rend le triage praticable sur les gros documents |
+| 6 | Interface FR/EN | ~2,5 j | Passe transversale : la faire une fois les écrans stabilisés |
+| 7 | OCR | ~2,5 j | Autonome, coûteux en poids ; peut être livré à part ou abandonné |
 
-Total : environ 7 jours. Le seul ordre qui compte est de placer l'i18n après les
-lots qui ajoutent des écrans : traduire ce qui va changer est du travail fait
-deux fois.
+Total : environ 13,5 jours. Les lots 1 à 3 se suivent strictement, chacun étant
+le socle du suivant. Les lots 4 à 7 sont indépendants entre eux, l'i18n devant
+simplement passer après les écrans qu'elle aura à traduire.
 
 ---
 
-## 1. Diff mot à mot
+## Lots 1 à 3 — Corriger directement dans le document (axe prioritaire)
+
+### Objectif
+
+Voir l'erreur **là où elle est dans le fichier**, et corriger vite. Aujourd'hui
+la revue se fait dans une liste posée à côté d'une reconstruction textuelle du
+document ; l'utilisateur doit faire lui-même le lien avec son fichier d'origine,
+puis rouvrir Word et retrouver la phrase à la main.
+
+Cible : la page du document telle qu'elle est, l'erreur surlignée dedans, la
+correction applicable sur place, et un fichier corrigé récupérable à la fin.
+
+### Ce qui bloque aujourd'hui
+
+Deux limites, toutes deux dans `src/services/documentParser.js` :
+
+1. **L'aperçu n'est pas le document.** `DocumentPreview` affiche des phrases
+   reconstruites : ni mise en page, ni police, ni images, ni tableaux. Cliquer
+   une phrase surligne un bloc de texte, pas un endroit du fichier.
+2. **Les positions sont jetées à l'extraction.** pdf.js fournit pour chaque
+   fragment de texte ses coordonnées (`transform`, `width`, `height`) : on ne
+   garde que `item.str`. Côté DOCX, `mammoth.extractRawText` renvoie du texte
+   plat, sans lien avec les paragraphes et les runs du fichier. Sans ces
+   repères, il est impossible de désigner un emplacement dans le fichier
+   d'origine, et encore moins d'y écrire.
+
+L'ordre des lots découle de là : les ancres d'abord, l'affichage ensuite, la
+correction en dernier.
+
+### Lot 1 — Ancres de position
+
+Étendre le modèle de document pour que chaque phrase porte son ancrage dans la
+source :
+
+```js
+{
+  kind: 'p',
+  text: 'The sales and marketing teams needs to collaborate more closely.',
+  anchor: {
+    kind: 'pdf',   // rectangles à surligner sur la page rendue
+    page: 3,
+    rects: [{ x, y, width, height }],   // repère PDF, converti au rendu
+  },
+}
+```
+
+```js
+  anchor: {
+    kind: 'docx',  // chemin dans l'OOXML, pour écrire au bon endroit
+    paragraph: 42,           // index du <w:p>
+    runs: [{ index: 3, start: 12, end: 58 }],  // <w:r> traversés et décalages
+  }
+```
+
+- **PDF** : conserver les `items` de `getTextContent()` avec leurs
+  transformations, et associer chaque phrase aux fragments qui la composent.
+  Une phrase couvre souvent plusieurs fragments et parfois plusieurs lignes,
+  d'où un tableau de rectangles et non un seul.
+- **DOCX** : abandonner `extractRawText` au profit d'une lecture directe de
+  `word/document.xml` (l'archive est déjà décompressable, voir lot 3), en
+  gardant l'indice de paragraphe et les décalages dans les runs. Word découpe
+  fréquemment une phrase en plusieurs `<w:r>` — c'est le cas normal, pas
+  l'exception.
+- **TXT / MD** : décalage de caractères dans le fichier, trivial.
+
+`normaliseFinding` recopie l'ancre de la phrase dans le finding, à côté de
+`sentenceId`. Le mécanisme d'identifiants reste inchangé : l'ancre s'ajoute, ne
+le remplace pas.
+
+**Effort : ~1,5 j.**
+
+### Lot 2 — Rendu fidèle et surlignage in situ
+
+- **PDF** : rendre chaque page dans un `<canvas>` avec pdf.js
+  (`page.render({ canvasContext, viewport })`), puis superposer une couche
+  absolue de rectangles cliquables construits depuis les ancres. Les
+  coordonnées PDF partent du bas de la page : la conversion passe par
+  `viewport.convertToViewportRectangle`, à ne pas réimplémenter à la main.
+  Rendu à la demande page par page, avec un cache : rendre cinquante pages
+  d'avance est inutile et coûteux.
+- **DOCX** : `mammoth.convertToHtml` au lieu de `extractRawText`, puis
+  surlignage par enrobage des plages de texte correspondantes. On perd la
+  pagination exacte de Word (elle n'existe pas dans le fichier, c'est un calcul
+  de rendu), mais on gagne titres, listes, gras et tableaux.
+- **TXT / MD** : l'aperçu actuel convient.
+
+L'interaction reste celle d'aujourd'hui, dans les deux sens : cliquer un
+finding fait défiler jusqu'à la zone dans le document, cliquer la zone
+sélectionne le finding.
+
+**Effort : ~2 j.**
+
+### Lot 3 — Correction en place et export du document corrigé
+
+L'écart entre formats est ici irréductible, et il faut l'assumer plutôt que de
+promettre partout la même chose.
+
+- **DOCX — aller-retour complet.** L'archive est ouverte avec JSZip,
+  `word/document.xml` est modifié aux emplacements donnés par les ancres, puis
+  l'archive est refermée et téléchargée. La mise en forme, les styles, les
+  images et les en-têtes sont préservés puisque tout le reste du fichier est
+  recopié tel quel. C'est le seul format qui permet de rendre à l'utilisateur
+  *son* document corrigé.
+  Cas à traiter : phrase répartie sur plusieurs runs (écrire dans le premier,
+  vider les suivants, en conservant leurs propriétés `<w:rPr>`), et suivi des
+  modifications éventuellement présent dans le fichier.
+- **PDF — pas d'édition en place.** Réécrire du texte dans un PDF en conservant
+  la mise en page n'est pas réalisable de façon fiable : la police peut ne pas
+  être intégrée, la justification serait à recalculer. Deux sorties honnêtes :
+  un **PDF annoté** (bulles de commentaire posées aux coordonnées des ancres,
+  via `pdf-lib`), qui se relit dans n'importe quel lecteur, et le classeur Excel
+  déjà en place. Le dire clairement dans l'interface plutôt que de laisser
+  espérer une correction automatique.
+- **TXT / MD** : réécriture directe, immédiate.
+
+Côté interface : cliquer une zone surlignée ouvre un champ pré-rempli avec la
+suggestion, modifiable avant application — la correction du modèle est un point
+de départ, pas un verdict. Les corrections appliquées s'accumulent dans une
+copie de travail en mémoire, et un bouton *Télécharger le document corrigé*
+produit le fichier. Rien n'est écrit sur le fichier d'origine.
+
+**Effort : ~3 j.**
+
+### Pièges
+
+- **Ne pas casser le mécanisme d'identifiants de phrase.** Le texte affiché doit
+  continuer de venir du document. Les ancres localisent, elles ne remplacent pas
+  la source.
+- **La copie de travail reste en mémoire** : aucune persistance, conformément à
+  la contrainte 4. Fermer l'onglet perd les corrections non téléchargées — le
+  dire dans l'interface avant que l'utilisateur ne le découvre.
+- **Le poids du rendu PDF** : pdf.js est déjà chargé, mais rendre les pages en
+  canvas consomme de la mémoire. Limiter le cache à quelques pages autour de la
+  position courante.
+- **PPTX** (non traité aujourd'hui) suivrait naturellement ce modèle : une diapo
+  = une page, texte dans `ppt/slides/slideN.xml`, et un aller-retour d'écriture
+  du même type que DOCX.
+
+### Tests
+
+- `tests/unit.mjs` : construction des ancres sur une phrase répartie sur
+  plusieurs fragments PDF et sur plusieurs runs DOCX ; réécriture d'un
+  `document.xml` minimal, en vérifiant que seuls les runs visés changent et que
+  leurs propriétés sont conservées ; conversion de coordonnées PDF.
+- Navigateur : DOCX corrigé téléchargé puis relu, comparaison du texte et
+  vérification que la mise en forme survit ; PDF annoté relu avec pdf.js ;
+  clic sur une zone du document qui sélectionne le bon finding.
+
+### Arbitrage recommandé
+
+Commencer par **DOCX**. C'est le format qui permet le vrai aller-retour, donc
+celui où l'objectif « corriger vite de notre côté » est réellement atteint ; le
+PDF, lui, plafonnera toujours à « localiser et annoter ». Si les livrables à
+réviser sont majoritairement des PDF, l'ordre s'inverse mais l'ambition doit
+être revue en conséquence.
+
+---
+
+## Lot 4 — Diff mot à mot
 
 ### Objectif
 
@@ -108,7 +270,122 @@ l'original (invariant le plus utile).
 
 ---
 
-## 2. OCR des PDF scannés
+## Lot 5 — Actions groupées
+
+### Objectif
+
+Traiter quarante findings un par un est le vrai coût d'une revue. Permettre de
+sélectionner puis d'accepter ou rejeter en une fois, avec annulation.
+
+### Conception
+
+- État `selectedIds` (`Set`) dans `App.jsx`, coche à gauche de chaque carte,
+  plus une coche « tout sélectionner » qui agit sur les findings **visibles**
+  (donc filtrés), jamais sur la totalité invisible.
+- Barre d'actions groupées affichée dès qu'une sélection existe :
+  *N sélectionnés — Accepter · Rejeter · Rouvrir · Vider la sélection*.
+- Raccourcis cohérents avec l'existant : `x` coche/décoche le finding courant,
+  `Maj+A` et `Maj+R` appliquent à la sélection.
+- Actions rapides depuis la barre de filtres : *Rejeter tout sous 70 % de
+  confiance*, *Accepter tout ce type* — ce sont les deux gestes réellement
+  répétés.
+- **Annulation obligatoire** : conserver un instantané de `reviewStates` avant
+  chaque action groupée et proposer *Annuler* pendant quelques secondes.
+  Rejeter quarante findings par erreur sans retour arrière est inacceptable.
+
+### Fichiers
+
+- créer `src/components/BulkActionsBar.jsx` ;
+- modifier `src/App.jsx` (sélection, application groupée, pile d'annulation),
+  `src/components/FindingCard.jsx` (coche), `src/components/FindingsList.jsx`
+  (raccourcis, sélection multiple), `src/components/FindingsFilter.jsx`
+  (actions rapides).
+
+### Pièges
+
+- La sélection doit être purgée quand les findings changent (nouvelle analyse,
+  relance ciblée) sous peine d'appliquer une action à des identifiants disparus.
+- Ne pas confondre sélection et triage : un finding sélectionné n'est pas encore
+  traité.
+
+### Tests
+
+- `tests/unit.mjs` : application groupée sur un `Map` d'états, annulation qui
+  restaure exactement l'état antérieur.
+- Navigateur : sélection de trois findings, rejet groupé, annulation, filtre
+  actif qui limite bien le « tout sélectionner ».
+
+**Effort : M — 1,5 jour.**
+
+---
+
+## Lot 6 — Interface FR/EN
+
+### Objectif
+
+L'interface est en anglais alors que l'usage est francophone. La langue de
+l'**interface** est indépendante de celle du **document**, déjà gérée.
+
+### Conception
+
+Internationalisation légère, sans bibliothèque : le besoin est un dictionnaire
+et une interpolation, pas la gestion des pluriels de quinze langues.
+
+- `src/i18n/fr.js` et `src/i18n/en.js` : objets plats, clés en `point.séparé`
+  (`findings.filter.allTypes`).
+- `src/i18n/index.jsx` : contexte React, hook `useT()` renvoyant
+  `t(clé, valeurs)` avec interpolation `{count}`, repli sur l'anglais si une clé
+  manque, et un avertissement en console en développement.
+- Langue par défaut : `navigator.language`, surchargeable dans la modale de
+  réglages, persistée dans `localStorage` à côté des réglages Ollama.
+- Dates et nombres : `Intl.DateTimeFormat` / `toLocaleString` avec la locale de
+  l'interface, ce qui corrige au passage les formats en dur.
+
+**Migration** : de l'ordre de 80 à 120 chaînes sur 15 fichiers — un comptage
+automatique en repère 63, mais il manque le texte réparti sur plusieurs lignes.
+Les quatre écrans les plus chargés sont `OllamaSettings`, `AnalysisConfig`,
+`FindingsFilter` et `TopBar` (une dizaine de chaînes chacun), auxquels s'ajoutent
+les 21 libellés de `data/constants.js`. Procéder écran par écran, en finissant
+chaque écran avant de passer au suivant : une interface à moitié traduite est
+pire que l'anglais intégral. Ordre suggéré : `TopBar`,
+`FindingCard`, `FindingsFilter`, `FindingsList`, `CleanDocumentState`,
+`AnalysisProgress`, puis les écrans de configuration.
+
+**Export Excel** : les en-têtes et libellés de statut suivent aussi la langue de
+l'interface. `excelExport.js` reçoit `t` en paramètre — à prévoir dès le début
+pour ne pas retoucher la signature deux fois.
+
+### Fichiers
+
+- créer `src/i18n/index.jsx`, `src/i18n/fr.js`, `src/i18n/en.js` ;
+- modifier tous les composants de `src/components/`, `src/App.jsx`,
+  `src/services/excelExport.js`, `src/data/review.js` (libellés de statut),
+  `src/data/constants.js` (libellés des skills et types de documents).
+
+### Pièges
+
+- `constants.js` mélange identifiants et libellés : garder les `id` intacts (ils
+  circulent dans les prompts et les données stockées) et ne traduire que les
+  `label`. Traduire un `id` casserait les prompts envoyés au modèle.
+- Les prompts envoyés au modèle restent en anglais : c'est la langue sur
+  laquelle ces modèles sont les plus fiables, et `languageInstruction` gère déjà
+  la langue de sortie. Ne pas confondre les deux.
+- Prévoir un contrôle simple listant les chaînes littérales restantes dans le
+  JSX, pour mesurer l'avancement.
+
+### Tests
+
+- `tests/unit.mjs` : `t` avec clé manquante (repli anglais), interpolation,
+  parité des clés entre `fr.js` et `en.js` (test le plus utile : il empêche les
+  oublis).
+- Navigateur : bascule FR/EN, persistance après rechargement, export Excel dont
+  les en-têtes suivent la langue.
+
+**Effort : M/L — 2,5 jours.**
+
+---
+
+## Lot 7 — OCR des PDF scannés
 
 ### Objectif
 
@@ -178,121 +455,6 @@ renforcée pour ces pages.
 
 ---
 
-## 3. Actions groupées
-
-### Objectif
-
-Traiter quarante findings un par un est le vrai coût d'une revue. Permettre de
-sélectionner puis d'accepter ou rejeter en une fois, avec annulation.
-
-### Conception
-
-- État `selectedIds` (`Set`) dans `App.jsx`, coche à gauche de chaque carte,
-  plus une coche « tout sélectionner » qui agit sur les findings **visibles**
-  (donc filtrés), jamais sur la totalité invisible.
-- Barre d'actions groupées affichée dès qu'une sélection existe :
-  *N sélectionnés — Accepter · Rejeter · Rouvrir · Vider la sélection*.
-- Raccourcis cohérents avec l'existant : `x` coche/décoche le finding courant,
-  `Maj+A` et `Maj+R` appliquent à la sélection.
-- Actions rapides depuis la barre de filtres : *Rejeter tout sous 70 % de
-  confiance*, *Accepter tout ce type* — ce sont les deux gestes réellement
-  répétés.
-- **Annulation obligatoire** : conserver un instantané de `reviewStates` avant
-  chaque action groupée et proposer *Annuler* pendant quelques secondes.
-  Rejeter quarante findings par erreur sans retour arrière est inacceptable.
-
-### Fichiers
-
-- créer `src/components/BulkActionsBar.jsx` ;
-- modifier `src/App.jsx` (sélection, application groupée, pile d'annulation),
-  `src/components/FindingCard.jsx` (coche), `src/components/FindingsList.jsx`
-  (raccourcis, sélection multiple), `src/components/FindingsFilter.jsx`
-  (actions rapides).
-
-### Pièges
-
-- La sélection doit être purgée quand les findings changent (nouvelle analyse,
-  relance ciblée) sous peine d'appliquer une action à des identifiants disparus.
-- Ne pas confondre sélection et triage : un finding sélectionné n'est pas encore
-  traité.
-
-### Tests
-
-- `tests/unit.mjs` : application groupée sur un `Map` d'états, annulation qui
-  restaure exactement l'état antérieur.
-- Navigateur : sélection de trois findings, rejet groupé, annulation, filtre
-  actif qui limite bien le « tout sélectionner ».
-
-**Effort : M — 1,5 jour.**
-
----
-
-## 4. Interface FR/EN
-
-### Objectif
-
-L'interface est en anglais alors que l'usage est francophone. La langue de
-l'**interface** est indépendante de celle du **document**, déjà gérée.
-
-### Conception
-
-Internationalisation légère, sans bibliothèque : le besoin est un dictionnaire
-et une interpolation, pas la gestion des pluriels de quinze langues.
-
-- `src/i18n/fr.js` et `src/i18n/en.js` : objets plats, clés en `point.séparé`
-  (`findings.filter.allTypes`).
-- `src/i18n/index.jsx` : contexte React, hook `useT()` renvoyant
-  `t(clé, valeurs)` avec interpolation `{count}`, repli sur l'anglais si une clé
-  manque, et un avertissement en console en développement.
-- Langue par défaut : `navigator.language`, surchargeable dans la modale de
-  réglages, persistée dans `localStorage` à côté des réglages Ollama.
-- Dates et nombres : `Intl.DateTimeFormat` / `toLocaleString` avec la locale de
-  l'interface, ce qui corrige au passage les formats en dur.
-
-**Migration** : de l'ordre de 80 à 120 chaînes sur 15 fichiers — un comptage
-automatique en repère 63, mais il manque le texte réparti sur plusieurs lignes.
-Les quatre écrans les plus chargés sont `OllamaSettings`, `AnalysisConfig`,
-`FindingsFilter` et `TopBar` (une dizaine de chaînes chacun), auxquels s'ajoutent
-les 21 libellés de `data/constants.js`. Procéder écran par écran, en finissant
-chaque écran avant de passer au suivant : une interface à moitié traduite est
-pire que l'anglais intégral. Ordre suggéré : `TopBar`,
-`FindingCard`, `FindingsFilter`, `FindingsList`, `CleanDocumentState`,
-`AnalysisProgress`, puis les écrans de configuration.
-
-**Export Excel** : les en-têtes et libellés de statut suivent aussi la langue de
-l'interface. `excelExport.js` reçoit `t` en paramètre — à prévoir dès le début
-pour ne pas retoucher la signature deux fois.
-
-### Fichiers
-
-- créer `src/i18n/index.jsx`, `src/i18n/fr.js`, `src/i18n/en.js` ;
-- modifier tous les composants de `src/components/`, `src/App.jsx`,
-  `src/services/excelExport.js`, `src/data/review.js` (libellés de statut),
-  `src/data/constants.js` (libellés des skills et types de documents).
-
-### Pièges
-
-- `constants.js` mélange identifiants et libellés : garder les `id` intacts (ils
-  circulent dans les prompts et les données stockées) et ne traduire que les
-  `label`. Traduire un `id` casserait les prompts envoyés au modèle.
-- Les prompts envoyés au modèle restent en anglais : c'est la langue sur
-  laquelle ces modèles sont les plus fiables, et `languageInstruction` gère déjà
-  la langue de sortie. Ne pas confondre les deux.
-- Prévoir un contrôle simple listant les chaînes littérales restantes dans le
-  JSX, pour mesurer l'avancement.
-
-### Tests
-
-- `tests/unit.mjs` : `t` avec clé manquante (repli anglais), interpolation,
-  parité des clés entre `fr.js` et `en.js` (test le plus utile : il empêche les
-  oublis).
-- Navigateur : bascule FR/EN, persistance après rechargement, export Excel dont
-  les en-têtes suivent la langue.
-
-**Effort : M/L — 2,5 jours.**
-
----
-
 ## Écarté pour l'instant
 
 Ces sujets ont été identifiés puis mis de côté. Ils sont listés ici pour qu'un
@@ -308,9 +470,14 @@ choix assumé ne se transforme pas en oubli.
 
 ## Points à trancher avant de commencer
 
-1. **OCR** : embarquer les 15 Mo de données de langue dans le dépôt, ou fournir
+1. **PPTX** : les decks PowerPoint ne sont pas traités aujourd'hui. Une diapo
+   entrerait naturellement comme une page dans le modèle, et l'écriture suivrait
+   le même chemin que DOCX (archive ZIP, texte dans `ppt/slides/slideN.xml`).
+   À intégrer à l'axe prioritaire ou à laisser de côté selon la nature réelle
+   des livrables à réviser.
+2. **OCR** : embarquer les 15 Mo de données de langue dans le dépôt, ou fournir
    un script de récupération à l'installation ? Un dépôt propre plaide pour le
    script, l'usage hors ligne immédiat pour l'embarquement.
-2. **i18n** : traduit-on aussi le contenu produit par le modèle dans l'export,
+3. **i18n** : traduit-on aussi le contenu produit par le modèle dans l'export,
    ou seulement l'ossature de l'interface ? Les explications sont déjà dans la
    langue du document, ce qui peut donner un classeur bilingue.
