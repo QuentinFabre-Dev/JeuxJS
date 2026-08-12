@@ -1,5 +1,5 @@
-import { useMemo, useRef, useState } from 'react';
-import { Play } from 'lucide-react';
+import { useCallback, useMemo, useRef, useState } from 'react';
+import { AlertTriangle, Loader2, Play } from 'lucide-react';
 
 import Header from './components/Header.jsx';
 import UploadZone from './components/UploadZone.jsx';
@@ -12,11 +12,15 @@ import PriorityDistribution from './components/PriorityDistribution.jsx';
 import SkillCounts from './components/SkillCounts.jsx';
 import DocumentPreview from './components/DocumentPreview.jsx';
 import TopBar from './components/TopBar.jsx';
+import OllamaSettings from './components/OllamaSettings.jsx';
 
+import { runMockAnalysis } from './services/mockAnalysisService.js';
 import {
   computeDocumentScore,
-  runMockAnalysis,
-} from './services/mockAnalysisService.js';
+  runOllamaAnalysis,
+} from './services/analysisService.js';
+import { parseDocument } from './services/documentParser.js';
+import useOllama from './hooks/useOllama.js';
 import { SKILLS } from './data/constants.js';
 
 // App states: 'idle' | 'analyzing' | 'done'
@@ -29,6 +33,10 @@ export default function App() {
   const [docType, setDocType] = useState('report');
   const [serviceLine, setServiceLine] = useState('audit');
 
+  const [documentModel, setDocumentModel] = useState(null);
+  const [isParsing, setIsParsing] = useState(false);
+  const [issue, setIssue] = useState(null); // { message, hint }
+
   const [status, setStatus] = useState('idle');
   const [progress, setProgress] = useState(0);
   const [findings, setFindings] = useState([]);
@@ -40,8 +48,31 @@ export default function App() {
   const [selectedFindingId, setSelectedFindingId] = useState(null);
 
   const abortRef = useRef(null);
+  const ollama = useOllama();
+  const isDemoEngine = ollama.settings.engine === 'demo';
 
   // ── Handlers ───────────────────────────────────────────────
+
+  /** Parses the dropped file so the preview shows the real content. */
+  const handleFileChange = useCallback(
+    async (nextFile) => {
+      setFile(nextFile);
+      setIssue(null);
+      setDocumentModel(null);
+      if (!nextFile) return;
+
+      setIsParsing(true);
+      try {
+        setDocumentModel(await parseDocument(nextFile));
+      } catch (error) {
+        setIssue({ message: error.message, hint: error.hint });
+      } finally {
+        setIsParsing(false);
+      }
+    },
+    []
+  );
+
   const toggleSkill = (id) => {
     setSelectedSkills((current) =>
       current.includes(id)
@@ -73,7 +104,7 @@ export default function App() {
   };
 
   const handleStart = async () => {
-    if (!file || selectedSkills.length === 0) return;
+    if (!canStart) return;
 
     // Reset
     setFindings([]);
@@ -84,21 +115,56 @@ export default function App() {
     setSelectedFindingId(null);
     setStatus('analyzing');
 
+    setIssue(null);
+
     const controller = new AbortController();
     abortRef.current = controller;
 
-    await runMockAnalysis({
-      file,
-      skills: selectedSkills,
-      docType,
-      customChecks,
-      signal: controller.signal,
-      onFinding: (finding) => {
-        setFindings((prev) => [finding, ...prev]);
-      },
-      onProgress: (p) => setProgress(p),
-      onComplete: () => setStatus('done'),
-    });
+    const onFinding = (finding) => setFindings((prev) => [finding, ...prev]);
+
+    try {
+      if (isDemoEngine) {
+        await runMockAnalysis({
+          file,
+          skills: selectedSkills,
+          docType,
+          customChecks,
+          signal: controller.signal,
+          onFinding,
+          onProgress: setProgress,
+          onComplete: () => setStatus('done'),
+        });
+        return;
+      }
+
+      const result = await runOllamaAnalysis({
+        documentModel,
+        skills: selectedSkills,
+        customChecks,
+        docType,
+        serviceLine,
+        settings: ollama.settings,
+        signal: controller.signal,
+        onFinding,
+        onProgress: setProgress,
+        onBatchError: (error, pages) =>
+          setIssue({
+            message: `Pages ${pages.join(', ')} could not be analysed.`,
+            hint: error.message,
+          }),
+      });
+
+      if (!result.aborted && result.findings.length === 0 && !result.errors?.length) {
+        setIssue({
+          message: 'No issue found in this document.',
+          hint: 'Add custom checks or try a larger model for a stricter review.',
+        });
+      }
+      setStatus('done');
+    } catch (error) {
+      setIssue({ message: error.message, hint: error.hint });
+      setStatus('done');
+    }
   };
 
   const handleStop = () => {
@@ -109,6 +175,8 @@ export default function App() {
   const handleReset = () => {
     abortRef.current?.abort();
     setFile(null);
+    setDocumentModel(null);
+    setIssue(null);
     setStatus('idle');
     setFindings([]);
     setResolvedIds(new Set());
@@ -147,10 +215,25 @@ export default function App() {
   const isAnalyzing = status === 'analyzing';
   const showResults = status !== 'idle';
 
+  // In Ollama mode we need a parsed document and a reachable model.
+  const canStart =
+    !!file &&
+    selectedSkills.length > 0 &&
+    (isDemoEngine || (!!documentModel && !isParsing && ollama.status === 'ready'));
+
   // ── Render ─────────────────────────────────────────────────
   return (
     <div className="min-h-screen flex flex-col">
-      <Header />
+      <Header>
+        <OllamaSettings
+          settings={ollama.settings}
+          onChange={ollama.updateSettings}
+          status={ollama.status}
+          models={ollama.models}
+          error={ollama.error}
+          onRefresh={ollama.refresh}
+        />
+      </Header>
 
       <main className="flex-1 mx-auto max-w-[1600px] w-full px-8 py-10">
         {!showResults ? (
@@ -168,7 +251,32 @@ export default function App() {
 
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
               <aside className="lg:col-span-5 space-y-6">
-                <UploadZone file={file} onFileChange={setFile} />
+                <UploadZone file={file} onFileChange={handleFileChange} />
+
+                {isParsing && (
+                  <p className="flex items-center gap-2 text-xs text-slate-500">
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    Extracting the text from your document…
+                  </p>
+                )}
+
+                {documentModel && !isParsing && (
+                  <p className="text-xs text-slate-500">
+                    {documentModel.pages.length} page(s) ·{' '}
+                    {documentModel.charCount.toLocaleString()} characters ready
+                    for analysis.
+                  </p>
+                )}
+
+                {issue && (
+                  <div className="rounded-xl bg-amber-50 ring-1 ring-amber-200 px-3.5 py-3 text-xs text-amber-900">
+                    <p className="flex items-center gap-2 font-medium">
+                      <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
+                      {issue.message}
+                    </p>
+                    {issue.hint && <p className="mt-1 opacity-80">{issue.hint}</p>}
+                  </div>
+                )}
                 <AnalysisConfig
                   selectedSkills={selectedSkills}
                   onToggleSkill={toggleSkill}
@@ -183,12 +291,27 @@ export default function App() {
                 <button
                   type="button"
                   onClick={handleStart}
-                  disabled={!file || selectedSkills.length === 0}
+                  disabled={!canStart}
                   className="btn-primary w-full"
                 >
                   <Play className="h-4 w-4" strokeWidth={2.5} />
-                  Start analysis
+                  {isDemoEngine
+                    ? 'Start analysis (demo data)'
+                    : `Analyse with ${ollama.settings.model}`}
                 </button>
+
+                {!isDemoEngine && ollama.status !== 'ready' && (
+                  <div className="text-xs text-slate-500 text-center space-y-1">
+                    <p className="font-medium text-slate-600">
+                      {ollama.error?.message ?? 'Connecting to the local model…'}
+                    </p>
+                    {ollama.error?.hint && <p>{ollama.error.hint}</p>}
+                    <p>
+                      Open the badge in the header to configure it, or switch to
+                      demo data.
+                    </p>
+                  </div>
+                )}
               </aside>
 
               <section className="lg:col-span-7">
@@ -238,6 +361,16 @@ export default function App() {
               />
             )}
 
+            {issue && (
+              <div className="rounded-xl bg-amber-50 ring-1 ring-amber-200 px-4 py-3 text-xs text-amber-900">
+                <p className="flex items-center gap-2 font-medium">
+                  <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
+                  {issue.message}
+                </p>
+                {issue.hint && <p className="mt-1 opacity-80">{issue.hint}</p>}
+              </div>
+            )}
+
             {/* Summary row */}
             <section className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <DocumentScore
@@ -281,6 +414,7 @@ export default function App() {
               {/* Document preview (sticky) */}
               <aside className="xl:col-span-5 xl:sticky xl:top-20 xl:self-start">
                 <DocumentPreview
+                  documentModel={isDemoEngine ? null : documentModel}
                   findings={findings}
                   selectedFindingId={selectedFindingId}
                   onSelectFinding={setSelectedFindingId}

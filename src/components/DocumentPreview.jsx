@@ -11,12 +11,16 @@ import { PRIORITIES } from '../data/constants.js';
  * the preview auto-scrolls to the matching sentence.
  */
 export default function DocumentPreview({
+  documentModel,
   findings,
   selectedFindingId,
   onSelectFinding,
   resolvedIds,
 }) {
   const scrollRef = useRef(null);
+
+  // Real uploaded document when available, mocked one in demo mode.
+  const doc = documentModel ?? MOCK_DOCUMENT;
 
   // Index "page::text" → finding (first match wins on collision).
   const findingByLocation = useMemo(() => {
@@ -96,20 +100,20 @@ export default function DocumentPreview({
         </div>
         <div className="flex-1 min-w-0">
           <p className="text-sm font-medium text-slate-900 truncate">
-            {MOCK_DOCUMENT.title}
+            {doc.title}
           </p>
           <p className="text-[11px] text-slate-500 -mt-0.5 truncate">
-            {MOCK_DOCUMENT.subtitle}
+            {doc.subtitle}
           </p>
         </div>
         <span className="chip bg-slate-50 text-slate-500 ring-1 ring-slate-200 shrink-0">
-          {MOCK_DOCUMENT.pages.length} pages
+          {doc.pages.length} pages
         </span>
       </div>
 
       {/* Pages */}
       <div ref={scrollRef} className="flex-1 overflow-y-auto px-5 py-5">
-        {MOCK_DOCUMENT.pages.map((blocks, pageIdx) => (
+        {doc.pages.map((blocks, pageIdx) => (
           <section key={pageIdx} className="mb-7 last:mb-2">
             <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400 mb-2.5">
               · Page {pageIdx + 1} ·
@@ -119,7 +123,7 @@ export default function DocumentPreview({
                 <div key={i}>{renderBlock(block, pageIdx)}</div>
               ))}
             </div>
-            {pageIdx < MOCK_DOCUMENT.pages.length - 1 && (
+            {pageIdx < doc.pages.length - 1 && (
               <div className="mt-7 border-t border-dashed border-slate-200" />
             )}
           </section>
