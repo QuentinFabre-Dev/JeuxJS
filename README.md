@@ -110,6 +110,14 @@ Each built-in check can also be **re-run on its own** (the circular arrow in the
 | `mistral:7b` | 8 GB | Fast, lighter on nuance |
 | `llama3.2:3b` | 4–8 GB | Small machines, expect misses |
 
+## Next steps
+
+Six items are planned but not implemented yet — word-level diff, review history
+and version comparison, OCR for scanned PDFs, bulk actions, dialog focus trap and
+a French/English interface. Each one is specified in
+[docs/plan-implementation.md](docs/plan-implementation.md): design, files to
+touch, known pitfalls, expected tests and effort.
+
 ## Troubleshooting
 
 | Symptom | Fix |
