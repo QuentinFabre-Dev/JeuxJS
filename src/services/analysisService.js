@@ -46,6 +46,9 @@ const buildSentenceIndex = (documentModel) => {
       index.set(`p${pageIdx + 1}s${blockIdx + 1}`, {
         page: pageIdx + 1,
         text: block.text,
+        // Position of the sentence in the rendered page, when the format
+        // provides one: this is what the viewer highlights.
+        rects: block.rects,
       });
     });
   });
@@ -263,6 +266,7 @@ export const normaliseFinding = (raw, { sentenceIndex, skills, customChecks }) =
     page: sentence.page,
     sentenceId: String(raw.id).trim(),
     original: sentence.text,
+    ...(sentence.rects && { rects: sentence.rects }),
     suggestion,
     explanation:
       String(raw.explanation ?? '').trim() || 'No explanation provided.',

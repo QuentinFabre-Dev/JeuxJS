@@ -14,7 +14,8 @@ import {
   readingOrder,
 } from '../src/services/analysisService.js';
 import { detectLanguage } from '../src/services/languageDetect.js';
-import { splitSentences, textToBlocks } from '../src/services/documentParser.js';
+import { joinPdfLines } from '../src/services/documentParser.js';
+import { splitSentences, textToBlocks } from '../src/services/textBlocks.js';
 import { REVIEW_STATES, toggleState, stateOf } from '../src/data/review.js';
 
 let failures = 0;
@@ -102,6 +103,37 @@ eq(
   ['First one.', 'Second one!', 'Third one?']
 );
 eq('titre numéroté détecté', textToBlocks('1. Introduction\n\nHello there.')[0].kind, 'heading');
+
+// ── reconstitution des paragraphes d'un PDF ─────────────────
+// Un PDF n'a pas de paragraphes : seules des lignes. Un titre court collé au
+// texte suivant produisait des fragments de phrase comme « 1. ».
+eq(
+  'titre court isolé du texte qui suit',
+  joinPdfLines('1. Introduction\nThis document is fine. It continues here.'),
+  '1. Introduction\n\nThis document is fine. It continues here.'
+);
+eq(
+  'ligne coupée au milieu d\'une phrase recollée',
+  joinPdfLines('The sales and marketing teams needs to collaborate much\nmore closely with everyone.'),
+  'The sales and marketing teams needs to collaborate much more closely with everyone.'
+);
+eq(
+  'césure recollée sans tiret',
+  joinPdfLines('collabo-\nration'),
+  'collaboration'
+);
+eq('ligne vide = nouveau paragraphe', joinPdfLines('A line here.\n\nAnother one.'), 'A line here.\n\nAnother one.');
+
+eq(
+  'numéro seul fusionné avec la phrase suivante',
+  splitSentences('1. Introduction of the report.'),
+  ['1. Introduction of the report.']
+);
+eq(
+  'phrases normales non fusionnées',
+  splitSentences('First sentence here. Second sentence here.'),
+  ['First sentence here.', 'Second sentence here.']
+);
 
 // ── triage ──────────────────────────────────────────────────
 let states = new Map();

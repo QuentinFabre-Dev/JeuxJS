@@ -1,12 +1,23 @@
 /**
- * Turns an uploaded file (PDF / DOCX / TXT / MD) into the document model used
- * by the app:
+ * Turns an uploaded file (PDF / DOCX / PPTX / TXT / MD) into the document model
+ * used by the app:
  *
- *   { title, subtitle, pages: [ [ { kind: 'heading' | 'p', text } ] ] }
+ *   {
+ *     kind: 'pdf' | 'docx' | 'pptx' | 'text',
+ *     title, subtitle, charCount,
+ *     pages: [ [ { kind: 'heading' | 'p', text, rects? } ] ],
+ *     source: { … }   // payload the viewer needs to render the real document
+ *   }
  *
  * Sentences are split into individual blocks so that a finding can point at an
- * exact sentence, which is what <DocumentPreview /> highlights.
+ * exact sentence. For PDF, each sentence also carries the rectangles it occupies
+ * on the page, which is what lets the viewer highlight it in place.
  */
+
+import { parsePptx } from './pptxParser.js';
+import { splitSentences, textToBlocks } from './textBlocks.js';
+
+export { splitSentences, textToBlocks };
 
 const MAX_BYTES = 20 * 1024 * 1024;
 // Above this, a "page" is cut so the model never receives a huge single block.
@@ -21,38 +32,6 @@ export class DocumentParseError extends Error {
 }
 
 const extensionOf = (name) => name.slice(name.lastIndexOf('.')).toLowerCase();
-
-/** Splits a paragraph into sentences, keeping their punctuation. */
-export const splitSentences = (paragraph) =>
-  paragraph
-    .replace(/\s+/g, ' ')
-    .trim()
-    // Split after . ! ? … followed by a space and an uppercase-ish start.
-    .split(/(?<=[.!?…])\s+(?=[«"'(\[]?[A-ZÀ-ÝŒ0-9])/u)
-    .map((sentence) => sentence.trim())
-    .filter(Boolean);
-
-const looksLikeHeading = (text) =>
-  text.length <= 90 &&
-  !/[.!?]$/.test(text) &&
-  (/^\d+(\.\d+)*[.)]?\s+\S/.test(text) || text === text.toUpperCase());
-
-/** Converts raw text into typed blocks (headings + one block per sentence). */
-export const textToBlocks = (raw) => {
-  const blocks = [];
-  for (const paragraph of raw.split(/\n\s*\n+/)) {
-    const clean = paragraph.replace(/\s+/g, ' ').trim();
-    if (!clean) continue;
-    if (looksLikeHeading(clean)) {
-      blocks.push({ kind: 'heading', text: clean });
-      continue;
-    }
-    for (const sentence of splitSentences(clean)) {
-      blocks.push({ kind: 'p', text: sentence });
-    }
-  }
-  return blocks;
-};
 
 /** Groups blocks into pages of bounded size. */
 const paginate = (blocks) => {
@@ -73,19 +52,140 @@ const paginate = (blocks) => {
   return pages.length ? pages : [[]];
 };
 
+// ── Position anchoring ─────────────────────────────────────────────────────
+
+/**
+ * Builds a whitespace-normalised copy of `text` along with, for each character
+ * of the copy, its index in the original. Sentences are matched on the
+ * normalised form (that is what `textToBlocks` produces) but the positions we
+ * need live in the original.
+ */
+const normaliseWithMap = (text) => {
+  let normalised = '';
+  const map = [];
+  let previousWasSpace = true;
+
+  for (let i = 0; i < text.length; i++) {
+    const isSpace = /\s/.test(text[i]);
+    if (isSpace) {
+      if (previousWasSpace) continue;
+      normalised += ' ';
+      map.push(i);
+      previousWasSpace = true;
+    } else {
+      normalised += text[i];
+      map.push(i);
+      previousWasSpace = false;
+    }
+  }
+  return { normalised, map };
+};
+
+/** Merges the rectangles of a same text line into one rectangle per line. */
+const mergeRects = (rects) => {
+  const lines = [];
+  for (const rect of rects) {
+    const line = lines.find(
+      (candidate) => Math.abs(candidate.top - rect.top) < rect.height * 0.6
+    );
+    if (line) {
+      const right = Math.max(line.left + line.width, rect.left + rect.width);
+      line.left = Math.min(line.left, rect.left);
+      line.top = Math.min(line.top, rect.top);
+      line.height = Math.max(line.height, rect.height);
+      line.width = right - line.left;
+    } else {
+      lines.push({ ...rect });
+    }
+  }
+  return lines;
+};
+
+/**
+ * Attaches to every sentence of a page the rectangles it occupies.
+ * `spans` describes where each text fragment sits in the page text.
+ */
+const attachRects = (blocks, pageText, spans) => {
+  const { normalised, map } = normaliseWithMap(pageText);
+  const haystack = normalised.toLowerCase();
+  let cursor = 0;
+
+  for (const block of blocks) {
+    const needle = block.text.toLowerCase();
+    let at = haystack.indexOf(needle, cursor);
+    // The sentence should come after the previous one; fall back to a global
+    // search when a repeated sentence throws the cursor off.
+    if (at === -1) at = haystack.indexOf(needle);
+    if (at === -1) continue;
+
+    cursor = at + needle.length;
+    const start = map[at];
+    const end = map[Math.min(at + needle.length - 1, map.length - 1)];
+
+    const rects = spans
+      .filter((span) => span.end > start && span.start <= end)
+      .map((span) => span.rect);
+
+    if (rects.length) block.rects = mergeRects(rects);
+  }
+  return blocks;
+};
+
+/**
+ * Rebuilds paragraphs from the visual lines of a PDF page.
+ *
+ * A PDF has no notion of paragraph: joining every line with a space would glue
+ * a heading to the text under it, and the sentence splitter would then produce
+ * fragments like "1." on its own. A short line that does not end a sentence and
+ * is followed by a new one is treated as a standalone block — that is what a
+ * heading looks like.
+ */
+export const joinPdfLines = (pageText) => {
+  const lines = pageText.replace(/-\n/g, '').split('\n');
+  let result = '';
+
+  lines.forEach((line, index) => {
+    const trimmed = line.trim();
+    if (!trimmed) {
+      if (!result.endsWith('\n\n')) result += '\n\n';
+      return;
+    }
+
+    const next = (lines[index + 1] ?? '').trim();
+    const endsSentence = /[.!?…:]$/.test(trimmed);
+    const nextStartsBlock = /^[«"'(\[]?[A-ZÀ-ÝŒ0-9]/.test(next);
+    const standalone = trimmed.length < 60 && !endsSentence && nextStartsBlock;
+
+    result += trimmed;
+    if (!next) return;
+    result += standalone || (endsSentence && trimmed.length < 60) ? '\n\n' : ' ';
+  });
+
+  return result.replace(/\n{3,}/g, '\n\n').trim();
+};
+
+// ── Format-specific readers ────────────────────────────────────────────────
+
 const parseTxt = async (file) => textToBlocks(await file.text());
 
 const parseDocx = async (file) => {
   const mammoth = await import('mammoth/mammoth.browser.js');
-  const { value } = await mammoth.extractRawText({
-    arrayBuffer: await file.arrayBuffer(),
-  });
-  return textToBlocks(value);
+  const buffer = await file.arrayBuffer();
+
+  // Two passes on purpose: the HTML feeds the viewer, the raw text feeds the
+  // sentence splitting (HTML tags would pollute it).
+  const [{ value: html }, { value: text }] = await Promise.all([
+    mammoth.convertToHtml({ arrayBuffer: buffer }),
+    mammoth.extractRawText({ arrayBuffer: buffer }),
+  ]);
+
+  return { blocks: textToBlocks(text), html };
 };
 
 /**
  * PDF: one document page = one preview page, so the page numbers shown in the
- * findings match the real document.
+ * findings match the real document. Text item positions are kept: they are what
+ * the viewer overlays on the rendered page.
  */
 const parsePdf = async (file) => {
   const pdfjs = await import('pdfjs-dist');
@@ -94,27 +194,54 @@ const parsePdf = async (file) => {
     import.meta.url
   ).toString();
 
-  const pdf = await pdfjs.getDocument({ data: await file.arrayBuffer() }).promise;
+  const data = await file.arrayBuffer();
+  // pdf.js takes ownership of the buffer it is given, so the viewer gets a copy.
+  const viewerData = data.slice(0);
+
+  const pdf = await pdfjs.getDocument({ data }).promise;
   const pages = [];
+  const geometry = [];
 
   for (let pageNumber = 1; pageNumber <= pdf.numPages; pageNumber++) {
     const page = await pdf.getPage(pageNumber);
+    const viewport = page.getViewport({ scale: 1 });
     const content = await page.getTextContent();
 
-    // pdf.js returns text items; `hasEOL` marks the end of a visual line.
-    const text = content.items
-      .map((item) => (item.str ?? '') + (item.hasEOL ? '\n' : ''))
-      .join('')
-      // A line break inside a sentence is a space; a blank line is a paragraph.
-      .replace(/-\n/g, '')
-      .replace(/\n{2,}/g, '\n\n')
-      .replace(/(?<!\n)\n(?!\n)/g, ' ');
+    let pageText = '';
+    const spans = [];
 
-    pages.push(textToBlocks(text));
+    for (const item of content.items) {
+      const str = item.str ?? '';
+      if (str) {
+        // Position of the fragment in the page, top-left origin, scale 1.
+        const tx = pdfjs.Util.transform(viewport.transform, item.transform);
+        const height = Math.hypot(tx[2], tx[3]) || item.height || 0;
+        spans.push({
+          start: pageText.length,
+          end: pageText.length + str.length,
+          rect: {
+            left: tx[4],
+            top: tx[5] - height,
+            width: item.width || 0,
+            height,
+          },
+        });
+      }
+      pageText += str + (item.hasEOL ? '\n' : '');
+    }
+
+    const cleaned = joinPdfLines(pageText);
+
+    const blocks = textToBlocks(cleaned);
+    pages.push(attachRects(blocks, pageText, spans));
+    geometry.push({ width: viewport.width, height: viewport.height });
   }
 
-  return pages;
+  await pdf.destroy();
+  return { pages, source: { data: viewerData, geometry } };
 };
+
+// ── Entry point ────────────────────────────────────────────────────────────
 
 export const parseDocument = async (file) => {
   if (!file) throw new DocumentParseError('No file provided.');
@@ -126,21 +253,35 @@ export const parseDocument = async (file) => {
 
   const ext = extensionOf(file.name);
   let pages;
+  let kind = 'text';
+  let source = null;
 
   try {
     if (ext === '.pdf') {
-      pages = await parsePdf(file);
+      const result = await parsePdf(file);
+      pages = result.pages;
+      source = result.source;
+      kind = 'pdf';
     } else if (ext === '.docx') {
-      pages = paginate(await parseDocx(file));
+      const { blocks, html } = await parseDocx(file);
+      pages = paginate(blocks);
+      source = { html };
+      kind = 'docx';
+    } else if (ext === '.pptx') {
+      const result = await parsePptx(file);
+      pages = result.pages;
+      source = result.source;
+      kind = 'pptx';
     } else if (ext === '.txt' || ext === '.md') {
       pages = paginate(await parseTxt(file));
-    } else if (ext === '.doc') {
-      throw new DocumentParseError('Legacy .doc files are not supported.', {
-        hint: 'Save the file as .docx or .pdf and upload it again.',
+      kind = 'text';
+    } else if (ext === '.doc' || ext === '.ppt') {
+      throw new DocumentParseError(`Legacy ${ext} files are not supported.`, {
+        hint: `Save the file as ${ext === '.doc' ? '.docx' : '.pptx'} or .pdf and upload it again.`,
       });
     } else {
       throw new DocumentParseError(`Unsupported file type: ${ext}`, {
-        hint: 'Supported formats: PDF, DOCX, TXT, MD.',
+        hint: 'Supported formats: PDF, DOCX, PPTX, TXT, MD.',
       });
     }
   } catch (error) {
@@ -150,21 +291,31 @@ export const parseDocument = async (file) => {
     });
   }
 
-  const nonEmpty = pages.filter((page) => page.length > 0);
-  if (!nonEmpty.length) {
+  // For PDF and PPTX a page index is a real page/slide number: dropping empty
+  // pages would shift every following number and send the viewer to the wrong
+  // page. Synthetic pagination (DOCX, text) has no such constraint.
+  const keepsNumbering = kind === 'pdf' || kind === 'pptx';
+  const finalPages = keepsNumbering ? pages : pages.filter((page) => page.length > 0);
+
+  if (!finalPages.some((page) => page.length > 0)) {
     throw new DocumentParseError('No text could be extracted from this file.', {
-      hint: 'Scanned PDFs need OCR before they can be analysed.',
+      hint:
+        kind === 'pdf'
+          ? 'Scanned PDFs need OCR before they can be analysed.'
+          : 'The file seems to contain no readable text.',
     });
   }
 
-  const firstText = nonEmpty[0].find((block) => block.text)?.text ?? file.name;
+  const firstText =
+    finalPages.flat().find((block) => block.text)?.text ?? file.name;
 
   return {
+    kind,
+    source,
     title: file.name,
-    subtitle:
-      firstText.length > 90 ? `${firstText.slice(0, 90)}…` : firstText,
-    pages: nonEmpty,
-    charCount: nonEmpty
+    subtitle: firstText.length > 90 ? `${firstText.slice(0, 90)}…` : firstText,
+    pages: finalPages,
+    charCount: finalPages
       .flat()
       .reduce((total, block) => total + block.text.length, 0),
   };

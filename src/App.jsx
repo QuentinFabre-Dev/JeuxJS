@@ -69,6 +69,7 @@ export default function App() {
   const [minConfidence, setMinConfidence] = useState(0);
   const [sortMode, setSortMode] = useState('document');
   const [selectedFindingId, setSelectedFindingId] = useState(null);
+  const [isViewerExpanded, setViewerExpanded] = useState(false);
 
   const abortRef = useRef(null);
   const ollama = useOllama();
@@ -532,7 +533,11 @@ export default function App() {
 
                 {/* Main row: findings + document preview */}
                 <section className="grid grid-cols-1 xl:grid-cols-12 gap-6">
-                  <div className="xl:col-span-7 space-y-3">
+                  <div
+                    className={`space-y-3 ${
+                      isViewerExpanded ? 'xl:col-span-4' : 'xl:col-span-7'
+                    }`}
+                  >
                     <div className="card px-4 py-3">
                       <FindingsFilter
                         skillFilter={skillFilter}
@@ -561,13 +566,19 @@ export default function App() {
                     />
                   </div>
 
-                  <aside className="xl:col-span-5 xl:sticky xl:top-20 xl:self-start">
+                  <aside
+                    className={`xl:sticky xl:top-20 xl:self-start ${
+                      isViewerExpanded ? 'xl:col-span-8' : 'xl:col-span-5'
+                    }`}
+                  >
                     <DocumentPreview
                       documentModel={isDemoEngine ? null : documentModel}
                       findings={findings}
                       selectedFindingId={selectedFindingId}
                       onSelectFinding={setSelectedFindingId}
                       reviewStates={reviewStates}
+                      isExpanded={isViewerExpanded}
+                      onToggleExpand={() => setViewerExpanded((value) => !value)}
                     />
                   </aside>
                 </section>

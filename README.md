@@ -1,7 +1,8 @@
 # Ryder — document QA with a local AI model
 
-React + Vite app that audits a document (PDF, DOCX, TXT, MD) and returns
-categorised, prioritised findings. The analysis runs on a **local Ollama
+React + Vite app that audits a document (PDF, DOCX, PPTX, TXT, MD) and returns
+categorised, prioritised findings, highlighted at their exact place in the
+document. The analysis runs on a **local Ollama
 model**: the file is parsed in the browser and the text is sent only to
 `localhost`. Nothing leaves the machine.
 
@@ -24,22 +25,29 @@ you can upload a document and hit **Analyse**.
 
 ## Reviewing a document
 
-1. **Triage each finding.** Accept (the correction is right) or reject (the model
+1. **See it in the document.** The right-hand panel shows the real file — actual
+   PDF pages, Word layout, PowerPoint slides — with each finding highlighted
+   where it sits. Click a highlight to select the finding, click a finding to
+   scroll to it. Zoom, and widen the panel when the document deserves the room.
+   The viewer is read-only: corrections are made in your own editor.
+2. **Triage each finding.** Accept (the correction is right) or reject (the model
    is wrong). Only open findings weigh on the quality score, so the score
    reflects what is genuinely left to fix. `j` / `k` move through the list,
    `a` accepts, `r` rejects.
-2. **Sort and filter.** Document order by default, or by priority / confidence.
+3. **Sort and filter.** Document order by default, or by priority / confidence.
    The confidence slider hides the calls the model was unsure about — useful
    with smaller models.
-3. **Export to Excel.** One workbook with a *Summary* sheet (score, counts,
+4. **Export to Excel.** One workbook with a *Summary* sheet (score, counts,
    context), a *Findings* sheet (filterable, with a status dropdown and an empty
    reviewer-comment column) and a *By type* breakdown.
 
 ## How it works
 
 1. **Parsing (browser).** `src/services/documentParser.js` extracts text with
-   `pdfjs-dist` (PDF), `mammoth` (DOCX) or plain read (TXT/MD), splits it into
-   sentences and pages, and builds the model shown in the preview panel.
+   `pdfjs-dist` (PDF), `mammoth` (DOCX), `jszip` + the OOXML parts (PPTX) or a
+   plain read (TXT/MD), splits it into sentences and pages, and keeps where each
+   sentence sits: rectangles on the page for PDF, shape geometry for PPTX. Those
+   anchors are what the viewer highlights.
 2. **Analysis (local).** `src/services/analysisService.js` sends the document
    page batch by page batch to `/api/chat` with `format: "json"`. Every sentence
    carries an id (`p2s5`); the model answers with those ids, so the sentence
@@ -51,7 +59,12 @@ you can upload a document and hit **Analyse**.
    acronym is defined twice or that a figure contradicts page 12. A final pass
    sends an index of the document's headings, figures and acronyms and asks only
    for cross-page inconsistencies.
-5. **Rendering.** Findings are normalised (unknown ids, unknown skills,
+5. **Viewing.** Each format gets the most faithful rendering available: real
+   pages drawn with pdf.js, Word layout converted to HTML, PowerPoint shapes
+   positioned from the geometry in the file (including placeholder geometry
+   inherited from the slide layout). Pages render as they approach the viewport,
+   so a long document does not render eagerly.
+6. **Rendering the findings.** Findings are normalised (unknown ids, unknown skills,
    suggestions identical to the original and duplicates are dropped), then fed to
    the existing UI: score, priority distribution, per-type counts and the
    clickable document preview.
@@ -112,11 +125,9 @@ Each built-in check can also be **re-run on its own** (the circular arrow in the
 
 ## Next steps
 
-The next milestone is reviewing **inside the document**: seeing each finding
-highlighted at its exact place in the file, editing it there, and downloading a
-corrected document (a true round-trip for DOCX; locate-and-annotate for PDF).
-Then come word-level diff, bulk actions, a French/English interface and OCR for
-scanned PDFs. Each one is specified in
+Reviewing inside the document is in place. What remains: OCR for scanned PDFs,
+word-level diff, bulk actions and a French/English interface. Each one is
+specified in
 [docs/plan-implementation.md](docs/plan-implementation.md): design, files to
 touch, known pitfalls, expected tests and effort.
 

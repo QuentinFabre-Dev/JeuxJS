@@ -14,6 +14,7 @@ export default function UploadZone({ file, onFileChange }) {
     accept: {
       'application/pdf': ['.pdf'],
       'application/vnd.openxmlformats-officedocument.wordprocessingml.document': ['.docx'],
+      'application/vnd.openxmlformats-officedocument.presentationml.presentation': ['.pptx'],
       'text/plain': ['.txt'],
       'text/markdown': ['.md'],
     },
@@ -69,7 +70,7 @@ export default function UploadZone({ file, onFileChange }) {
         </p>
         <p className="text-xs text-slate-500 mt-1">
           or <span className="text-brand-600 font-medium">browse</span> ·
-          PDF, DOCX, TXT, MD (max 20 MB)
+          PDF, DOCX, PPTX, TXT, MD (max 20 MB)
         </p>
       </div>
     </div>

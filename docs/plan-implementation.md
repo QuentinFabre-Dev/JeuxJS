@@ -36,17 +36,19 @@ fichiers touchés, étapes, pièges connus, tests attendus.
 
 | Lot | Contenu | Effort | Pourquoi cet ordre |
 | --- | --- | --- | --- |
-| 1 | Ancres de position dans l'extraction | ~1,5 j | Socle de tout le reste : sans elles, impossible de situer une erreur dans le fichier |
-| 2 | Rendu fidèle du document + surlignage in situ | ~2 j | C'est là que la revue bascule dans le document |
-| 3 | Correction en place + export du document corrigé | ~3 j | La finalité : ressortir un fichier corrigé, pas une liste |
-| 4 | Diff mot à mot | ~0,5 j | Prend toute sa valeur une fois la correction éditable en ligne |
-| 5 | Actions groupées | ~1,5 j | Rend le triage praticable sur les gros documents |
-| 6 | Interface FR/EN | ~2,5 j | Passe transversale : la faire une fois les écrans stabilisés |
-| 7 | OCR | ~2,5 j | Autonome, coûteux en poids ; peut être livré à part ou abandonné |
+| Lot | Contenu | Effort | État |
+| --- | --- | --- | --- |
+| 1 | Ancres de position dans l'extraction | ~1,5 j | **fait** |
+| 2 | Visualiseur fidèle + surlignage in situ (PDF, Word, PowerPoint) | ~2 j | **fait** |
+| 3 | Support PPTX de bout en bout | ~1 j | **fait** |
+| 4 | OCR des PDF scannés | ~2,5 j | à faire — prochain |
+| 5 | Diff mot à mot | ~0,5 j | à faire |
+| 6 | Actions groupées | ~1,5 j | à faire |
+| 7 | Interface FR/EN | ~2,5 j | à faire, en dernier : elle traduit les écrans des lots précédents |
 
-Total : environ 13,5 jours. Les lots 1 à 3 se suivent strictement, chacun étant
-le socle du suivant. Les lots 4 à 7 sont indépendants entre eux, l'i18n devant
-simplement passer après les écrans qu'elle aura à traduire.
+La correction en place et l'export d'un document corrigé ont été retirés : le
+visualiseur sert à **voir** l'erreur à sa place, la correction se fait dans
+l'éditeur d'origine.
 
 ---
 
