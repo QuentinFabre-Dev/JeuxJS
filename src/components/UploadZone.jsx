@@ -10,11 +10,13 @@ const formatBytes = (bytes) => {
 
 export default function UploadZone({ file, onFileChange }) {
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
+    // Formats the local parser can actually read (see services/documentParser.js).
     accept: {
       'application/pdf': ['.pdf'],
-      'application/msword': ['.doc'],
       'application/vnd.openxmlformats-officedocument.wordprocessingml.document': ['.docx'],
+      'application/vnd.openxmlformats-officedocument.presentationml.presentation': ['.pptx'],
       'text/plain': ['.txt'],
+      'text/markdown': ['.md'],
     },
     multiple: false,
     onDrop: (acceptedFiles) => {
@@ -68,7 +70,7 @@ export default function UploadZone({ file, onFileChange }) {
         </p>
         <p className="text-xs text-slate-500 mt-1">
           or <span className="text-brand-600 font-medium">browse</span> ·
-          PDF, DOCX, TXT (max 20 MB)
+          PDF, DOCX, PPTX, TXT, MD (max 20 MB)
         </p>
       </div>
     </div>

@@ -1,5 +1,7 @@
-import { ArrowRight, Check, FileText } from 'lucide-react';
+import { ArrowRight, FileText, ScanText } from 'lucide-react';
 import { PRIORITIES, SKILL_STYLES, SKILLS } from '../data/constants.js';
+import { REVIEW_STATES } from '../data/review.js';
+import ReviewActions from './ReviewActions.jsx';
 
 const skillLabel = (finding) => {
   if (finding.skill === 'custom') {
@@ -11,17 +13,20 @@ const skillLabel = (finding) => {
 /**
  * Compact "table row" style finding entry.
  * Clickable, with a selected state that ties it to the preview.
- * A checkbox on the left lets the user mark the finding as resolved.
+ * Accept / reject buttons drive the triage state.
  */
 export default function FindingCard({
   finding,
   isSelected,
-  isResolved,
+  reviewState = REVIEW_STATES.PENDING,
   onClick,
-  onToggleResolved,
+  onSetReviewState,
 }) {
   const priority = PRIORITIES[finding.priority];
   const confidencePct = Math.round(finding.confidence * 100);
+  const isAccepted = reviewState === REVIEW_STATES.ACCEPTED;
+  const isRejected = reviewState === REVIEW_STATES.REJECTED;
+  const isTriaged = isAccepted || isRejected;
 
   return (
     <article
@@ -42,7 +47,7 @@ export default function FindingCard({
         isSelected
           ? 'ring-2 ring-brand-500 shadow-card'
           : 'hover:shadow-card hover:border-slate-300/80',
-        isResolved ? 'opacity-60' : '',
+        isTriaged ? 'opacity-60' : '',
       ].join(' ')}
     >
       {/* Priority rail */}
@@ -54,30 +59,10 @@ export default function FindingCard({
       <div className="flex-1 min-w-0 p-3.5">
         {/* Meta line */}
         <header className="flex flex-wrap items-center gap-2 mb-2">
-          {/* Resolve checkbox */}
-          <button
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation();
-              onToggleResolved?.(finding.id);
-            }}
-            aria-label={isResolved ? 'Mark as unresolved' : 'Mark as resolved'}
-            aria-pressed={isResolved}
-            className={[
-              'h-4 w-4 rounded border grid place-items-center shrink-0 transition-colors',
-              'focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-400',
-              isResolved
-                ? 'bg-emerald-500 border-emerald-500 text-white'
-                : 'bg-white border-slate-300 hover:border-brand-400',
-            ].join(' ')}
-          >
-            {isResolved && <Check className="h-3 w-3" strokeWidth={3} />}
-          </button>
-
           <span
             className={[
               `chip ${SKILL_STYLES[finding.skill] ?? SKILL_STYLES.custom}`,
-              isResolved ? 'line-through' : '',
+              isRejected ? 'line-through' : '',
             ].join(' ')}
           >
             {skillLabel(finding)}
@@ -90,10 +75,34 @@ export default function FindingCard({
             <FileText className="h-3 w-3" />
             p. {finding.page}
           </span>
+          {finding.fromOcr && (
+            <span
+              className="chip bg-amber-50 text-amber-700 ring-1 ring-amber-200"
+              title="Read by text recognition: the error may come from the scan"
+            >
+              <ScanText className="h-3 w-3" />
+              OCR
+            </span>
+          )}
+          {isTriaged && (
+            <span
+              className={`chip ${
+                isAccepted
+                  ? 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200'
+                  : 'bg-slate-100 text-slate-600 ring-1 ring-slate-200'
+              }`}
+            >
+              {isAccepted ? 'Accepted' : 'Rejected'}
+            </span>
+          )}
           <span className="ml-auto text-[11px] text-slate-500 tabular-nums">
             Confidence ·{' '}
             <span className="font-semibold text-slate-700">{confidencePct}%</span>
           </span>
+          <ReviewActions
+            state={reviewState}
+            onSet={(target) => onSetReviewState?.(finding.id, target)}
+          />
         </header>
 
         {/* Original → Suggestion (two-column layout) */}
@@ -105,7 +114,7 @@ export default function FindingCard({
             <p
               className={[
                 'text-[13px] text-slate-800 leading-snug',
-                isResolved ? 'line-through' : '',
+                isRejected ? 'line-through' : '',
               ].join(' ')}
             >
               {finding.original}

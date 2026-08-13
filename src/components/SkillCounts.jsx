@@ -1,10 +1,14 @@
+import { Loader2, RotateCw } from 'lucide-react';
+
 import { SKILLS, SKILL_STYLES } from '../data/constants.js';
 
 /**
  * Findings count per skill, displayed as a tidy list of chips.
  * Custom user-defined checks are aggregated under a single row.
+ * Each built-in check can be re-run on its own, so tightening one criterion
+ * does not mean paying for a full re-analysis.
  */
-export default function SkillCounts({ findings }) {
+export default function SkillCounts({ findings, onRerunSkill, rerunningSkill }) {
   const baseRows = SKILLS.map((s) => ({
     ...s,
     count: findings.filter((f) => f.skill === s.id).length,
@@ -49,6 +53,23 @@ export default function SkillCounts({ findings }) {
               <span className="text-sm font-semibold text-slate-900 tabular-nums w-5 text-right">
                 {row.count}
               </span>
+              {onRerunSkill && row.id !== 'custom' && (
+                <button
+                  type="button"
+                  onClick={() => onRerunSkill(row.id)}
+                  disabled={!!rerunningSkill}
+                  className="text-slate-300 hover:text-brand-600 disabled:opacity-40
+                             focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-400 rounded"
+                  title={`Re-run the ${row.label} check`}
+                  aria-label={`Re-run the ${row.label} check`}
+                >
+                  {rerunningSkill === row.id ? (
+                    <Loader2 className="h-3.5 w-3.5 animate-spin text-brand-600" />
+                  ) : (
+                    <RotateCw className="h-3.5 w-3.5" />
+                  )}
+                </button>
+              )}
             </div>
           );
         })}
