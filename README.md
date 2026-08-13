@@ -138,7 +138,10 @@ cost every instruction the review depends on.
 ## Next steps
 
 Reviewing inside the document and OCR are in place. What remains: word-level
-diff, bulk actions and a French/English interface. Each one is specified in
+diff, bulk actions and a French/English interface. A separate track — moving the
+analysis to specialised agents with a bounded verification loop and per-service-line
+packs — is designed in [docs/plan-agentique.md](docs/plan-agentique.md). Each one
+is specified in
 [docs/plan-implementation.md](docs/plan-implementation.md): design, files to
 touch, known pitfalls, expected tests and effort.
 
