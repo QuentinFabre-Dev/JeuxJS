@@ -49,6 +49,29 @@ export const listModels = async (baseUrl, { signal } = {}) => {
 };
 
 /**
+ * Model families whose chat template has no system turn.
+ *
+ * Gemma is the notable one: its template only knows `user` and `model` turns.
+ * Whether a separate system message survives then depends on the template
+ * shipped with the model, and a silently dropped system prompt means the review
+ * rules — answer in JSON, never invent — never reach the model at all. Folding
+ * it into the first user message costs nothing and removes the question.
+ */
+const NO_SYSTEM_ROLE = /gemma/i;
+
+/** Builds the message list, honouring the model's template constraints. */
+export const buildMessages = (model, system, user) => {
+  if (!system) return [{ role: 'user', content: user }];
+  if (NO_SYSTEM_ROLE.test(model ?? '')) {
+    return [{ role: 'user', content: `${system}\n\n---\n\n${user}` }];
+  }
+  return [
+    { role: 'system', content: system },
+    { role: 'user', content: user },
+  ];
+};
+
+/**
  * POST /api/chat with `stream: true`, forcing a JSON object answer.
  * `onToken` receives each chunk of text as it arrives, which is what makes
  * findings appear progressively instead of in one final burst.
@@ -67,10 +90,7 @@ export const chatJson = async (
         model,
         stream: true,
         format: 'json',
-        messages: [
-          ...(system ? [{ role: 'system', content: system }] : []),
-          { role: 'user', content: prompt },
-        ],
+        messages: buildMessages(model, system, prompt),
         options: { temperature, num_ctx: numCtx },
       }),
     });

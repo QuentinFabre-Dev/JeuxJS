@@ -125,9 +125,15 @@ Each built-in check can also be **re-run on its own** (the circular arrow in the
 | Model | RAM | Profile |
 | --- | --- | --- |
 | `llama3.1:8b` | 8–16 GB | Default, good balance |
+| `gemma3:12b` | 16–24 GB | Strong on written style; multimodal |
+| `gemma3:4b` | 8 GB | Fast; expect more false positives |
 | `qwen2.5:14b` | 16–32 GB | Stricter reviews, slower |
 | `mistral:7b` | 8 GB | Fast, lighter on nuance |
-| `llama3.2:3b` | 4–8 GB | Small machines, expect misses |
+
+Gemma's chat template has no system turn, so the client folds the review rules
+into the user message for that family (`buildMessages` in
+`services/ollamaClient.js`). Without it, a silently dropped system prompt would
+cost every instruction the review depends on.
 
 ## Next steps
 

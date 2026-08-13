@@ -17,6 +17,7 @@ import { detectLanguage } from '../src/services/languageDetect.js';
 import { joinPdfLines } from '../src/services/documentParser.js';
 import { splitSentences, textToBlocks } from '../src/services/textBlocks.js';
 import { REVIEW_STATES, toggleState, stateOf } from '../src/data/review.js';
+import { buildMessages } from '../src/services/ollamaClient.js';
 
 let failures = 0;
 const eq = (label, actual, expected) => {
@@ -133,6 +134,29 @@ eq(
   'phrases normales non fusionnées',
   splitSentences('First sentence here. Second sentence here.'),
   ['First sentence here.', 'Second sentence here.']
+);
+
+// ── compatibilité des gabarits de conversation ──────────────
+// Gemma n'a pas de tour « system » : une consigne envoyée séparément peut être
+// perdue, et avec elle toutes les règles de la revue.
+eq(
+  'llama garde un tour system distinct',
+  buildMessages('llama3.1:8b', 'RULES', 'TEXT').map((m) => m.role),
+  ['system', 'user']
+);
+eq(
+  'gemma reçoit les règles dans le message utilisateur',
+  buildMessages('gemma3:12b', 'RULES', 'TEXT'),
+  [{ role: 'user', content: 'RULES\n\n---\n\nTEXT' }]
+);
+ok(
+  'les règles sont bien présentes pour gemma',
+  buildMessages('gemma3:4b', 'RULES', 'TEXT')[0].content.includes('RULES')
+);
+eq(
+  'sans consigne, un seul message',
+  buildMessages('gemma3:4b', '', 'TEXT'),
+  [{ role: 'user', content: 'TEXT' }]
 );
 
 // ── triage ──────────────────────────────────────────────────
