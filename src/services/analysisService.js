@@ -49,6 +49,7 @@ const buildSentenceIndex = (documentModel) => {
         // Position of the sentence in the rendered page, when the format
         // provides one: this is what the viewer highlights.
         rects: block.rects,
+        fromOcr: block.fromOcr === true,
       });
     });
   });
@@ -271,7 +272,12 @@ export const normaliseFinding = (raw, { sentenceIndex, skills, customChecks }) =
     explanation:
       String(raw.explanation ?? '').trim() || 'No explanation provided.',
     priority: PRIORITIES.includes(priority) ? priority : 'medium',
-    confidence: clampConfidence(raw.confidence),
+    // A recognised page can misread characters: what looks like a typo may be
+    // the OCR's, not the author's.
+    confidence: sentence.fromOcr
+      ? Number(Math.max(0.3, clampConfidence(raw.confidence) - 0.1).toFixed(2))
+      : clampConfidence(raw.confidence),
+    ...(sentence.fromOcr && { fromOcr: true }),
     skill: isCustom ? 'custom' : rawSkill,
     ...(isCustom && {
       customLabel:

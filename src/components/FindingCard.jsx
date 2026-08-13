@@ -1,4 +1,4 @@
-import { ArrowRight, FileText } from 'lucide-react';
+import { ArrowRight, FileText, ScanText } from 'lucide-react';
 import { PRIORITIES, SKILL_STYLES, SKILLS } from '../data/constants.js';
 import { REVIEW_STATES } from '../data/review.js';
 import ReviewActions from './ReviewActions.jsx';
@@ -75,6 +75,15 @@ export default function FindingCard({
             <FileText className="h-3 w-3" />
             p. {finding.page}
           </span>
+          {finding.fromOcr && (
+            <span
+              className="chip bg-amber-50 text-amber-700 ring-1 ring-amber-200"
+              title="Read by text recognition: the error may come from the scan"
+            >
+              <ScanText className="h-3 w-3" />
+              OCR
+            </span>
+          )}
           {isTriaged && (
             <span
               className={`chip ${

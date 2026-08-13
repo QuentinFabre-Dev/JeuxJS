@@ -25,19 +25,25 @@ you can upload a document and hit **Analyse**.
 
 ## Reviewing a document
 
-1. **See it in the document.** The right-hand panel shows the real file — actual
+1. **Scanned PDF? Run recognition.** A PDF with no extractable text is a scan.
+   The app says so and offers to read it locally with Tesseract — engine, WASM
+   and language data are all served from `public/tesseract/`, nothing is fetched
+   from a CDN. English and French are installed. Findings coming from a
+   recognised page carry an `OCR` badge and a slightly lower confidence, because
+   what looks like a typo may be a misread character.
+2. **See it in the document.** The right-hand panel shows the real file — actual
    PDF pages, Word layout, PowerPoint slides — with each finding highlighted
    where it sits. Click a highlight to select the finding, click a finding to
    scroll to it. Zoom, and widen the panel when the document deserves the room.
    The viewer is read-only: corrections are made in your own editor.
-2. **Triage each finding.** Accept (the correction is right) or reject (the model
+3. **Triage each finding.** Accept (the correction is right) or reject (the model
    is wrong). Only open findings weigh on the quality score, so the score
    reflects what is genuinely left to fix. `j` / `k` move through the list,
    `a` accepts, `r` rejects.
-3. **Sort and filter.** Document order by default, or by priority / confidence.
+4. **Sort and filter.** Document order by default, or by priority / confidence.
    The confidence slider hides the calls the model was unsure about — useful
    with smaller models.
-4. **Export to Excel.** One workbook with a *Summary* sheet (score, counts,
+5. **Export to Excel.** One workbook with a *Summary* sheet (score, counts,
    context), a *Findings* sheet (filterable, with a status dropdown and an empty
    reviewer-comment column) and a *By type* breakdown.
 
@@ -125,9 +131,8 @@ Each built-in check can also be **re-run on its own** (the circular arrow in the
 
 ## Next steps
 
-Reviewing inside the document is in place. What remains: OCR for scanned PDFs,
-word-level diff, bulk actions and a French/English interface. Each one is
-specified in
+Reviewing inside the document and OCR are in place. What remains: word-level
+diff, bulk actions and a French/English interface. Each one is specified in
 [docs/plan-implementation.md](docs/plan-implementation.md): design, files to
 touch, known pitfalls, expected tests and effort.
 
@@ -139,8 +144,8 @@ settings, playbooks) are stored locally.
 
 | Symptom | Fix |
 | --- | --- |
+| Recognition finds nothing | Scan too low-resolution, or a language other than English/French |
 | `Cannot reach Ollama` | Start `ollama serve`, then restart `npm run dev` |
 | `Model "…" is not installed` | `ollama pull <model>`, then hit **Retest** |
-| No text extracted from a PDF | Scanned document — run OCR first |
 | Analysis is slow | Smaller model, or raise **Pages / call** |
 | Findings look shallow | Larger model, lower temperature, fewer pages per call |

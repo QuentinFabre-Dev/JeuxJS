@@ -41,7 +41,7 @@ fichiers touchés, étapes, pièges connus, tests attendus.
 | 1 | Ancres de position dans l'extraction | ~1,5 j | **fait** |
 | 2 | Visualiseur fidèle + surlignage in situ (PDF, Word, PowerPoint) | ~2 j | **fait** |
 | 3 | Support PPTX de bout en bout | ~1 j | **fait** |
-| 4 | OCR des PDF scannés | ~2,5 j | à faire — prochain |
+| 4 | OCR des PDF scannés | ~2,5 j | **fait** |
 | 5 | Diff mot à mot | ~0,5 j | à faire |
 | 6 | Actions groupées | ~1,5 j | à faire |
 | 7 | Interface FR/EN | ~2,5 j | à faire, en dernier : elle traduit les écrans des lots précédents |
@@ -472,14 +472,6 @@ choix assumé ne se transforme pas en oubli.
 
 ## Points à trancher avant de commencer
 
-1. **PPTX** : les decks PowerPoint ne sont pas traités aujourd'hui. Une diapo
-   entrerait naturellement comme une page dans le modèle, et l'écriture suivrait
-   le même chemin que DOCX (archive ZIP, texte dans `ppt/slides/slideN.xml`).
-   À intégrer à l'axe prioritaire ou à laisser de côté selon la nature réelle
-   des livrables à réviser.
-2. **OCR** : embarquer les 15 Mo de données de langue dans le dépôt, ou fournir
-   un script de récupération à l'installation ? Un dépôt propre plaide pour le
-   script, l'usage hors ligne immédiat pour l'embarquement.
-3. **i18n** : traduit-on aussi le contenu produit par le modèle dans l'export,
+1. **i18n** : traduit-on aussi le contenu produit par le modèle dans l'export,
    ou seulement l'ossature de l'interface ? Les explications sont déjà dans la
    langue du document, ce qui peut donner un classeur bilingue.

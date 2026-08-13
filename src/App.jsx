@@ -14,6 +14,7 @@ import DocumentPreview from './components/DocumentPreview.jsx';
 import TopBar from './components/TopBar.jsx';
 import OllamaSettings from './components/OllamaSettings.jsx';
 import CleanDocumentState from './components/CleanDocumentState.jsx';
+import OcrPrompt from './components/OcrPrompt.jsx';
 
 import { runMockAnalysis } from './services/mockAnalysisService.js';
 import {
@@ -25,6 +26,7 @@ import {
 import { parseDocument } from './services/documentParser.js';
 import { detectLanguage, documentSample, languageLabel } from './services/languageDetect.js';
 import { exportToExcel } from './services/excelExport.js';
+import { ocrLanguageFor, pagesNeedingOcr, runOcr } from './services/ocr.js';
 import useOllama from './hooks/useOllama.js';
 import { DOC_TYPES, SERVICE_LINES, SKILLS } from './data/constants.js';
 import { REVIEW_STATES, stateOf, toggleState } from './data/review.js';
@@ -53,6 +55,10 @@ export default function App() {
 
   const [documentModel, setDocumentModel] = useState(null);
   const [isParsing, setIsParsing] = useState(false);
+  const [ocrPages, setOcrPages] = useState([]);
+  const [ocrLanguage, setOcrLanguage] = useState('eng');
+  const [ocrProgress, setOcrProgress] = useState(null);
+  const [isOcrRunning, setOcrRunning] = useState(false);
   const [issue, setIssue] = useState(null); // { message, hint }
 
   const [status, setStatus] = useState('idle');
@@ -72,6 +78,7 @@ export default function App() {
   const [isViewerExpanded, setViewerExpanded] = useState(false);
 
   const abortRef = useRef(null);
+  const ocrAbortRef = useRef(null);
   const ollama = useOllama();
   const isDemoEngine = ollama.settings.engine === 'demo';
 
@@ -86,13 +93,24 @@ export default function App() {
     setIssue(null);
     setDocumentModel(null);
     setDetectedLanguage(null);
+    setOcrPages([]);
+    setOcrProgress(null);
     if (!nextFile) return;
 
     setIsParsing(true);
     try {
       const parsed = await parseDocument(nextFile);
       setDocumentModel(parsed);
-      setDetectedLanguage(detectLanguage(documentSample(parsed)).id);
+      const detected = detectLanguage(documentSample(parsed)).id;
+      setDetectedLanguage(detected);
+
+      // A PDF page without text is a scan: offer recognition rather than
+      // analysing an empty document.
+      if (parsed.kind === 'pdf') {
+        const candidates = pagesNeedingOcr(parsed);
+        setOcrPages(candidates);
+        setOcrLanguage(ocrLanguageFor(detected));
+      }
     } catch (error) {
       setIssue({ message: error.message, hint: error.hint });
     } finally {
@@ -120,6 +138,63 @@ export default function App() {
     setReviewStates((current) => toggleState(current, id, target));
   }, []);
 
+  // ── OCR ────────────────────────────────────────────────────
+  const handleRunOcr = async () => {
+    if (!documentModel?.source?.data || !ocrPages.length) return;
+
+    const controller = new AbortController();
+    ocrAbortRef.current = controller;
+    setOcrRunning(true);
+    setOcrProgress({ done: 0, total: ocrPages.length, page: ocrPages[0] });
+    setIssue(null);
+
+    try {
+      const recognised = await runOcr({
+        pdfData: documentModel.source.data,
+        pages: ocrPages,
+        language: ocrLanguage,
+        signal: controller.signal,
+        onProgress: setOcrProgress,
+      });
+
+      setDocumentModel((current) => {
+        if (!current) return current;
+        const pages = current.pages.map((blocks, index) =>
+          recognised.get(index + 1) ?? blocks
+        );
+        return {
+          ...current,
+          pages,
+          charCount: pages
+            .flat()
+            .reduce((total, block) => total + block.text.length, 0),
+        };
+      });
+
+      const remaining = ocrPages.filter(
+        (page) => !(recognised.get(page)?.length > 0)
+      );
+      setOcrPages(remaining);
+      if (remaining.length === ocrPages.length) {
+        setIssue({
+          message: 'Text recognition found nothing readable on these pages.',
+          hint: 'The scan may be too low-resolution, or the language may not be one of the two installed.',
+        });
+      }
+    } catch (error) {
+      setIssue({ message: `Text recognition failed. ${error.message}`, hint: error.hint });
+    } finally {
+      setOcrRunning(false);
+      setOcrProgress(null);
+      ocrAbortRef.current = null;
+    }
+  };
+
+  const handleCancelOcr = () => {
+    if (isOcrRunning) ocrAbortRef.current?.abort();
+    else setOcrPages([]);
+  };
+
   // ── Playbooks ──────────────────────────────────────────────
   const applyPlaybook = (playbook) => {
     setCustomChecks((current) => [
@@ -145,10 +220,13 @@ export default function App() {
   const showResults = status !== 'idle';
 
   // In Ollama mode we need a parsed document and a reachable model.
+  const hasText = (documentModel?.charCount ?? 0) > 0;
   const canStart =
     !!file &&
     selectedSkills.length > 0 &&
-    (isDemoEngine || (!!documentModel && !isParsing && ollama.status === 'ready'));
+    !isOcrRunning &&
+    (isDemoEngine ||
+      (!!documentModel && hasText && !isParsing && ollama.status === 'ready'));
 
   /**
    * @param {Object} [options]
@@ -395,12 +473,25 @@ export default function App() {
                   </p>
                 )}
 
-                {documentModel && !isParsing && (
+                {documentModel && !isParsing && hasText && (
                   <p className="text-xs text-slate-500">
                     {documentModel.pages.length} page(s) ·{' '}
                     {documentModel.charCount.toLocaleString()} characters ·{' '}
                     {languageLabel(effectiveLanguage)} · ready for analysis.
                   </p>
+                )}
+
+                {ocrPages.length > 0 && documentModel?.kind === 'pdf' && (
+                  <OcrPrompt
+                    pageCount={ocrPages.length}
+                    totalPages={documentModel.pages.length}
+                    language={ocrLanguage}
+                    onLanguageChange={setOcrLanguage}
+                    onRun={handleRunOcr}
+                    onCancel={handleCancelOcr}
+                    progress={ocrProgress}
+                    isRunning={isOcrRunning}
+                  />
                 )}
 
                 {issueBanner}

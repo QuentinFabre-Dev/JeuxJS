@@ -15,9 +15,14 @@
  */
 
 import { parsePptx } from './pptxParser.js';
-import { splitSentences, textToBlocks } from './textBlocks.js';
+import {
+  joinPdfLines,
+  normaliseWithMap,
+  splitSentences,
+  textToBlocks,
+} from './textBlocks.js';
 
-export { splitSentences, textToBlocks };
+export { joinPdfLines, splitSentences, textToBlocks };
 
 const MAX_BYTES = 20 * 1024 * 1024;
 // Above this, a "page" is cut so the model never receives a huge single block.
@@ -53,33 +58,6 @@ const paginate = (blocks) => {
 };
 
 // ── Position anchoring ─────────────────────────────────────────────────────
-
-/**
- * Builds a whitespace-normalised copy of `text` along with, for each character
- * of the copy, its index in the original. Sentences are matched on the
- * normalised form (that is what `textToBlocks` produces) but the positions we
- * need live in the original.
- */
-const normaliseWithMap = (text) => {
-  let normalised = '';
-  const map = [];
-  let previousWasSpace = true;
-
-  for (let i = 0; i < text.length; i++) {
-    const isSpace = /\s/.test(text[i]);
-    if (isSpace) {
-      if (previousWasSpace) continue;
-      normalised += ' ';
-      map.push(i);
-      previousWasSpace = true;
-    } else {
-      normalised += text[i];
-      map.push(i);
-      previousWasSpace = false;
-    }
-  }
-  return { normalised, map };
-};
 
 /** Merges the rectangles of a same text line into one rectangle per line. */
 const mergeRects = (rects) => {
@@ -129,39 +107,6 @@ const attachRects = (blocks, pageText, spans) => {
     if (rects.length) block.rects = mergeRects(rects);
   }
   return blocks;
-};
-
-/**
- * Rebuilds paragraphs from the visual lines of a PDF page.
- *
- * A PDF has no notion of paragraph: joining every line with a space would glue
- * a heading to the text under it, and the sentence splitter would then produce
- * fragments like "1." on its own. A short line that does not end a sentence and
- * is followed by a new one is treated as a standalone block — that is what a
- * heading looks like.
- */
-export const joinPdfLines = (pageText) => {
-  const lines = pageText.replace(/-\n/g, '').split('\n');
-  let result = '';
-
-  lines.forEach((line, index) => {
-    const trimmed = line.trim();
-    if (!trimmed) {
-      if (!result.endsWith('\n\n')) result += '\n\n';
-      return;
-    }
-
-    const next = (lines[index + 1] ?? '').trim();
-    const endsSentence = /[.!?…:]$/.test(trimmed);
-    const nextStartsBlock = /^[«"'(\[]?[A-ZÀ-ÝŒ0-9]/.test(next);
-    const standalone = trimmed.length < 60 && !endsSentence && nextStartsBlock;
-
-    result += trimmed;
-    if (!next) return;
-    result += standalone || (endsSentence && trimmed.length < 60) ? '\n\n' : ' ';
-  });
-
-  return result.replace(/\n{3,}/g, '\n\n').trim();
 };
 
 // ── Format-specific readers ────────────────────────────────────────────────
@@ -297,12 +242,11 @@ export const parseDocument = async (file) => {
   const keepsNumbering = kind === 'pdf' || kind === 'pptx';
   const finalPages = keepsNumbering ? pages : pages.filter((page) => page.length > 0);
 
-  if (!finalPages.some((page) => page.length > 0)) {
+  // A PDF without text is not a failure: it is a scan, and the app offers to
+  // run recognition on it. Any other empty file is a dead end.
+  if (!finalPages.some((page) => page.length > 0) && kind !== 'pdf') {
     throw new DocumentParseError('No text could be extracted from this file.', {
-      hint:
-        kind === 'pdf'
-          ? 'Scanned PDFs need OCR before they can be analysed.'
-          : 'The file seems to contain no readable text.',
+      hint: 'The file seems to contain no readable text.',
     });
   }
 

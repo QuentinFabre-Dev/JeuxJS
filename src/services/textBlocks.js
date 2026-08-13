@@ -64,3 +64,64 @@ export const textToBlocks = (raw) => {
   }
   return blocks;
 };
+
+/**
+ * Builds a whitespace-normalised copy of `text` along with, for each character
+ * of the copy, its index in the original. Sentences are matched on the
+ * normalised form (that is what `textToBlocks` produces) but the positions we
+ * need live in the original.
+ */
+export const normaliseWithMap = (text) => {
+  let normalised = '';
+  const map = [];
+  let previousWasSpace = true;
+
+  for (let i = 0; i < text.length; i++) {
+    const isSpace = /\s/.test(text[i]);
+    if (isSpace) {
+      if (previousWasSpace) continue;
+      normalised += ' ';
+      map.push(i);
+      previousWasSpace = true;
+    } else {
+      normalised += text[i];
+      map.push(i);
+      previousWasSpace = false;
+    }
+  }
+  return { normalised, map };
+};
+
+/**
+ * Rebuilds paragraphs from the visual lines of a PDF page.
+ *
+ * A PDF has no notion of paragraph: joining every line with a space would glue
+ * a heading to the text under it, and the sentence splitter would then produce
+ * fragments like "1." on its own. A short line that does not end a sentence and
+ * is followed by a new one is treated as a standalone block — that is what a
+ * heading looks like.
+ */
+export const joinPdfLines = (pageText) => {
+  const lines = pageText.replace(/-\n/g, '').split('\n');
+  let result = '';
+
+  lines.forEach((line, index) => {
+    const trimmed = line.trim();
+    if (!trimmed) {
+      if (!result.endsWith('\n\n')) result += '\n\n';
+      return;
+    }
+
+    const next = (lines[index + 1] ?? '').trim();
+    const endsSentence = /[.!?…:]$/.test(trimmed);
+    const nextStartsBlock = /^[«"'(\[]?[A-ZÀ-ÝŒ0-9]/.test(next);
+    const standalone = trimmed.length < 60 && !endsSentence && nextStartsBlock;
+
+    result += trimmed;
+    if (!next) return;
+    result += standalone || (endsSentence && trimmed.length < 60) ? '\n\n' : ' ';
+  });
+
+  return result.replace(/\n{3,}/g, '\n\n').trim();
+};
+
