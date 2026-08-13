@@ -73,7 +73,10 @@ src/agents/
   types.js            forme d'un agent + validation
   registry.js         agents disponibles selon les critères et le pack métier
   builtins/
-    grammar.js  spelling.js  clarity.js  tone.js  consistency.js  custom.js
+    mechanical.js       orthographe + grammaire (modèle rapide)
+    editorial.js        clarté + ton (modèle principal)
+    consistency.js      portée document
+    custom.js           checks personnalisés de l'utilisateur
   critic.js           agent de vérification
   domains/
     audit.js  cyber.js  finance.js  tax.js      packs métier
@@ -216,15 +219,18 @@ les lots suivants mesurables.
 - Comparaison lot A : même document, même fixture, findings identiques avant et
   après le refactor.
 
-## À trancher avant de commencer
+## Décisions actées
 
-1. **Granularité** — un agent par critère (5 appels par lot), ou deux agents
-   groupés « mécanique » (orthographe + grammaire) et « rédactionnel »
-   (clarté + ton) ? Le groupement divise le coût par deux pour une perte de
-   spécialisation modeste. Recommandation : commencer groupé, dégrouper si le
-   banc d'évaluation montre un gain.
-2. **Vérification par défaut** — `uncertain` semble le bon compromis, mais c'est
-   un arbitrage coût/précision qui t'appartient.
-3. **Packs métier** — figés dans le code, ou éditables dans l'interface comme
-   les playbooks ? L'édition suppose de stocker des définitions, ce que la
-   contrainte de non-persistance interdit aujourd'hui.
+1. **Granularité : deux agents groupés.** Un agent « mécanique » (orthographe +
+   grammaire) sur le modèle rapide, un agent « rédactionnel » (clarté + ton) sur
+   le modèle principal, plus la cohérence en portée document — soit 3 appels par
+   lot au lieu de 5. Le dégroupage reste possible sans refonte : la forme d'agent
+   accepte déjà plusieurs `skills`, et le lot D dira s'il apporte quelque chose.
+
+2. **Vérification : `uncertain` par défaut.** Le critique revoit les findings
+   sous 0,8 de confiance et tous ceux marqués `high`. Les politiques `off` et
+   `all` restent accessibles dans les réglages.
+
+3. **Packs métier : figés dans le code**, dans `src/agents/domains/*.js`. Ils sont
+   versionnés, relus en revue de code, et ne stockent rien — conforme à la règle
+   de non-persistance. Ajouter un pack passe par une modification de code.
