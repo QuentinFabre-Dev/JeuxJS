@@ -12,7 +12,8 @@ import PriorityDistribution from './components/PriorityDistribution.jsx';
 import SkillCounts from './components/SkillCounts.jsx';
 import DocumentPreview from './components/DocumentPreview.jsx';
 import TopBar from './components/TopBar.jsx';
-import OllamaSettings from './components/OllamaSettings.jsx';
+import ProviderSettings from './components/ProviderSettings.jsx';
+import CloudConfirmDialog from './components/CloudConfirmDialog.jsx';
 import CleanDocumentState from './components/CleanDocumentState.jsx';
 import OcrPrompt from './components/OcrPrompt.jsx';
 
@@ -27,7 +28,8 @@ import { parseDocument } from './services/documentParser.js';
 import { detectLanguage, documentSample, languageLabel } from './services/languageDetect.js';
 import { exportToExcel } from './services/excelExport.js';
 import { ocrLanguageFor, pagesNeedingOcr, runOcr } from './services/ocr.js';
-import useOllama from './hooks/useOllama.js';
+import useProvider from './hooks/useProvider.js';
+import { isCloudProvider } from './config/providers.js';
 import { DOC_TYPES, SERVICE_LINES, SKILLS } from './data/constants.js';
 import { REVIEW_STATES, stateOf, toggleState } from './data/review.js';
 import {
@@ -79,8 +81,19 @@ export default function App() {
 
   const abortRef = useRef(null);
   const ocrAbortRef = useRef(null);
-  const ollama = useOllama();
-  const isDemoEngine = ollama.settings.engine === 'demo';
+  const provider = useProvider();
+  const isDemoEngine = provider.engine === 'demo';
+  const isCloudEngine = isCloudProvider(provider.engine);
+
+  // Confirmation of sending the document to a cloud API, asked once per run.
+  const [pendingCloudRun, setPendingCloudRun] = useState(null);
+
+  // Settings as the analysis engine expects them: one flat model and endpoint.
+  const analysisSettings = {
+    ...provider.settings,
+    model: provider.model,
+    baseUrl: provider.baseUrl,
+  };
 
   const effectiveLanguage =
     language === 'auto' ? (detectedLanguage ?? 'en') : language;
@@ -226,14 +239,26 @@ export default function App() {
     selectedSkills.length > 0 &&
     !isOcrRunning &&
     (isDemoEngine ||
-      (!!documentModel && hasText && !isParsing && ollama.status === 'ready'));
+      (!!documentModel && hasText && !isParsing && provider.status === 'ready'));
 
   /**
    * @param {Object} [options]
    * @param {string} [options.onlySkill] Re-run a single check, keeping the
    *   findings of every other check untouched.
    */
-  const handleStart = async (options = {}) => {
+  /**
+   * Gate in front of the analysis: sending a document to a cloud API is asked
+   * for explicitly, once per run.
+   */
+  const handleStart = (options = {}) => {
+    if (isCloudEngine && provider.status === 'ready') {
+      setPendingCloudRun(options);
+      return undefined;
+    }
+    return startAnalysis(options);
+  };
+
+  const startAnalysis = async (options = {}) => {
     const onlySkill = typeof options.onlySkill === 'string' ? options.onlySkill : null;
     if (!canStart || (onlySkill && isAnalyzing)) return;
 
@@ -284,7 +309,7 @@ export default function App() {
         docType,
         serviceLine,
         language: effectiveLanguage,
-        settings: ollama.settings,
+        settings: analysisSettings,
         signal: controller.signal,
         // A single-check re-run does not need the cross-page pass.
         crossPagePass: !onlySkill,
@@ -410,7 +435,7 @@ export default function App() {
           languageLabel: isDemoEngine ? '—' : languageLabel(effectiveLanguage),
           date: new Date().toLocaleString(),
           engine: isDemoEngine ? 'Demo data' : 'Ollama (local)',
-          model: isDemoEngine ? '—' : ollama.settings.model,
+          model: isDemoEngine ? '—' : provider.model,
           customChecks,
         },
       });
@@ -437,14 +462,30 @@ export default function App() {
   // ── Render ─────────────────────────────────────────────────
   return (
     <div className="min-h-screen flex flex-col">
+      {pendingCloudRun && (
+        <CloudConfirmDialog
+          providerLabel={provider.provider.label}
+          fileName={file?.name}
+          pageCount={documentModel?.pages.length}
+          onCancel={() => setPendingCloudRun(null)}
+          onConfirm={() => {
+            const options = pendingCloudRun;
+            setPendingCloudRun(null);
+            startAnalysis(options);
+          }}
+        />
+      )}
+
       <Header>
-        <OllamaSettings
-          settings={ollama.settings}
-          onChange={ollama.updateSettings}
-          status={ollama.status}
-          models={ollama.models}
-          error={ollama.error}
-          onRefresh={ollama.refresh}
+        <ProviderSettings
+          settings={provider.settings}
+          model={provider.model}
+          engine={provider.engine}
+          onChange={provider.updateSettings}
+          status={provider.status}
+          models={provider.models}
+          error={provider.error}
+          onRefresh={provider.refresh}
         />
       </Header>
 
@@ -524,15 +565,15 @@ export default function App() {
                   <Play className="h-4 w-4" strokeWidth={2.5} />
                   {isDemoEngine
                     ? 'Start analysis (demo data)'
-                    : `Analyse with ${ollama.settings.model}`}
+                    : `Analyse with ${provider.model}`}
                 </button>
 
-                {!isDemoEngine && ollama.status !== 'ready' && (
+                {!isDemoEngine && provider.status !== 'ready' && (
                   <div className="text-xs text-slate-500 text-center space-y-1">
                     <p className="font-medium text-slate-600">
-                      {ollama.error?.message ?? 'Connecting to the local model…'}
+                      {provider.error?.message ?? 'Connecting to the model…'}
                     </p>
-                    {ollama.error?.hint && <p>{ollama.error.hint}</p>}
+                    {provider.error?.hint && <p>{provider.error.hint}</p>}
                     <p>
                       Open the badge in the header to configure it, or switch to
                       demo data.
@@ -685,7 +726,9 @@ export default function App() {
             Ryder ·{' '}
             {isDemoEngine
               ? 'demo mode (mocked findings)'
-              : `local analysis via Ollama (${ollama.settings.model}) · nothing leaves this machine`}
+              : isCloudEngine
+                ? `analysis via ${provider.provider.label} (${provider.model}) · document text leaves this machine`
+                : `local analysis via Ollama (${provider.model}) · nothing leaves this machine`}
           </span>
           <span>© {new Date().getFullYear()}</span>
         </div>

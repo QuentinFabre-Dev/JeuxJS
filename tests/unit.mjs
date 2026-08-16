@@ -18,6 +18,8 @@ import { joinPdfLines } from '../src/services/documentParser.js';
 import { splitSentences, textToBlocks } from '../src/services/textBlocks.js';
 import { REVIEW_STATES, toggleState, stateOf } from '../src/data/review.js';
 import { buildMessages } from '../src/services/ollamaClient.js';
+import { parseSseChunk } from '../src/services/deepseekClient.js';
+import { activeModel, activeBaseUrl, isCloudProvider } from '../src/config/providers.js';
 
 let failures = 0;
 const eq = (label, actual, expected) => {
@@ -158,6 +160,64 @@ eq(
   buildMessages('gemma3:4b', '', 'TEXT'),
   [{ role: 'user', content: 'TEXT' }]
 );
+
+// ── flux SSE de DeepSeek ────────────────────────────────────
+// DeepSeek streame en SSE, Ollama en NDJSON : c'est la seule vraie différence
+// entre les deux fournisseurs.
+eq(
+  'tokens extraits de lignes data:',
+  parseSseChunk(
+    'data: {"choices":[{"delta":{"content":"Hel"}}]}\n' +
+    'data: {"choices":[{"delta":{"content":"lo"}}]}\n'
+  ).tokens,
+  ['Hel', 'lo']
+);
+eq(
+  'ligne incomplète conservée pour le prochain morceau',
+  parseSseChunk('data: {"choices":[{"delta":{"content":"a"}}]}\ndata: {"cho').rest,
+  'data: {"cho'
+);
+eq('marqueur [DONE] ignoré', parseSseChunk('data: [DONE]\n').tokens, []);
+eq('lignes vides ignorées', parseSseChunk('\n\ndata: [DONE]\n').tokens, []);
+eq(
+  'delta sans contenu ignoré (rôle initial)',
+  parseSseChunk('data: {"choices":[{"delta":{"role":"assistant"}}]}\n').tokens,
+  []
+);
+{
+  // Reconstitution d'un flux découpé arbitrairement, comme le fait le réseau.
+  const full =
+    'data: {"choices":[{"delta":{"content":"{\\"findings\\":"}}]}\n' +
+    'data: {"choices":[{"delta":{"content":"[]}"}}]}\n' +
+    'data: [DONE]\n';
+  let buffer = '';
+  let text = '';
+  for (let i = 0; i < full.length; i += 7) {
+    buffer += full.slice(i, i + 7);
+    const { tokens, rest } = parseSseChunk(buffer);
+    buffer = rest;
+    text += tokens.join('');
+  }
+  eq('flux découpé recomposé correctement', text, '{"findings":[]}');
+}
+
+// ── réglages par fournisseur ────────────────────────────────
+{
+  const settings = {
+    engine: 'deepseek',
+    baseUrl: '/ollama',
+    models: { ollama: 'llama3.1:8b', deepseek: 'deepseek-chat' },
+  };
+  eq('modèle du fournisseur actif', activeModel(settings), 'deepseek-chat');
+  eq('DeepSeek passe toujours par son proxy', activeBaseUrl(settings), '/deepseek');
+  eq(
+    'le modèle Ollama reste mémorisé',
+    activeModel({ ...settings, engine: 'ollama' }),
+    'llama3.1:8b'
+  );
+  eq('ollama est local', isCloudProvider('ollama'), false);
+  eq('deepseek est cloud', isCloudProvider('deepseek'), true);
+}
 
 // ── triage ──────────────────────────────────────────────────
 let states = new Map();

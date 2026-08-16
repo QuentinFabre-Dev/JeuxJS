@@ -2,7 +2,10 @@
 
 React + Vite app that audits a document (PDF, DOCX, PPTX, TXT, MD) and returns
 categorised, prioritised findings, highlighted at their exact place in the
-document. The analysis runs on a **local Ollama
+document.
+
+Two engines: a **local Ollama model** (nothing leaves the machine) or the
+**DeepSeek API** as a fallback when the local model is unavailable or too weak. The analysis runs on a **local Ollama
 model**: the file is parsed in the browser and the text is sent only to
 `localhost`. Nothing leaves the machine.
 
@@ -82,6 +85,26 @@ it in the analysis panel if the detection is wrong.
 The quality score is normalised by document length: 20 findings in a 2-page memo
 and 20 findings in a 100-page report are not the same defect density.
 
+## Using DeepSeek instead of the local model
+
+Put the key in a `.env` file at the root (copy `.env.example`):
+
+```bash
+DEEPSEEK_API_KEY=sk-...
+```
+
+Then restart `npm run dev` and pick **DeepSeek (cloud)** in the engine badge.
+
+The key is read by the Vite dev server and injected into the `/deepseek` proxy
+on the way out — it never reaches the browser. It is deliberately **not**
+prefixed `VITE_`: those variables are inlined into the bundle and would be
+public to anyone opening the devtools. The proxy also sidesteps CORS, which
+OpenAI-compatible APIs do not open to browsers.
+
+Because the document text does leave the machine, the app asks for an explicit
+confirmation before each cloud run, and the header badge turns orange for as
+long as a cloud engine is selected. Do not use it for confidential deliverables.
+
 ## Configuration
 
 Everything is editable at runtime from the header badge — engine, model,
@@ -138,10 +161,13 @@ cost every instruction the review depends on.
 ## Next steps
 
 Reviewing inside the document and OCR are in place. What remains: word-level
-diff, bulk actions and a French/English interface. A separate track — moving the
-analysis to specialised agents with a bounded verification loop and per-service-line
-packs — is designed in [docs/plan-agentique.md](docs/plan-agentique.md). Each one
-is specified in
+diff, bulk actions and a French/English interface. Two separate tracks are
+designed but not started: moving the analysis to specialised agents with a
+bounded verification loop and per-service-line packs
+([docs/plan-agentique.md](docs/plan-agentique.md)), and deploying the app on
+Vercel behind a shared password with DeepSeek as the cloud fallback when Ollama
+isn't reachable ([docs/plan-deepseek-deploy.md](docs/plan-deepseek-deploy.md)).
+Each one is specified in
 [docs/plan-implementation.md](docs/plan-implementation.md): design, files to
 touch, known pitfalls, expected tests and effort.
 

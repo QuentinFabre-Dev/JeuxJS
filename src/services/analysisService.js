@@ -12,7 +12,8 @@
  * other from one page to the next.
  */
 
-import { chatJson, extractJson, OllamaError } from './ollamaClient.js';
+import { extractJson, OllamaError } from './ollamaClient.js';
+import { chatJson } from './providers.js';
 import { DOC_TYPES, SERVICE_LINES, SKILLS } from '../data/constants.js';
 import { languageLabel } from './languageDetect.js';
 
@@ -375,7 +376,7 @@ export const runOllamaAnalysis = async ({
     let cursor = 0;
     const startedAt = performance.now();
 
-    const answer = await chatJson(settings.baseUrl, {
+    const answer = await chatJson(settings.engine, settings.baseUrl, {
       model: settings.model,
       system: SYSTEM_PROMPT,
       prompt,
