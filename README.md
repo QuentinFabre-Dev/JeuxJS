@@ -138,10 +138,13 @@ cost every instruction the review depends on.
 ## Next steps
 
 Reviewing inside the document and OCR are in place. What remains: word-level
-diff, bulk actions and a French/English interface. A separate track — moving the
-analysis to specialised agents with a bounded verification loop and per-service-line
-packs — is designed in [docs/plan-agentique.md](docs/plan-agentique.md). Each one
-is specified in
+diff, bulk actions and a French/English interface. Two separate tracks are
+designed but not started: moving the analysis to specialised agents with a
+bounded verification loop and per-service-line packs
+([docs/plan-agentique.md](docs/plan-agentique.md)), and deploying the app on
+Vercel behind a shared password with DeepSeek as the cloud fallback when Ollama
+isn't reachable ([docs/plan-deepseek-deploy.md](docs/plan-deepseek-deploy.md)).
+Each one is specified in
 [docs/plan-implementation.md](docs/plan-implementation.md): design, files to
 touch, known pitfalls, expected tests and effort.
 
