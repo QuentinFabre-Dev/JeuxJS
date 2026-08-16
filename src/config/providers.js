@@ -1,0 +1,110 @@
+/**
+ * Model providers and their runtime settings.
+ *
+ * Two providers can run the analysis:
+ *
+ * - **Ollama**, on this machine. Nothing leaves the computer.
+ * - **DeepSeek**, a cloud API. Used as a fallback when the local model is not
+ *   available or not good enough — at the cost of sending the document text to
+ *   a third party.
+ *
+ * Both are reached through a Vite proxy (`/ollama`, `/deepseek`), never
+ * directly: for DeepSeek that keeps the API key inside the Node process — a key
+ * exposed to the browser would be public — and it also sidesteps CORS, which
+ * OpenAI-compatible APIs do not open to browsers.
+ */
+
+const STORAGE_KEY = 'ryder.provider.settings';
+
+// `import.meta.env` only exists under Vite; guarding it keeps these modules
+// importable from plain Node (tests, scripts).
+const env = import.meta.env ?? {};
+
+export const PROXY_BASE_URL = '/ollama';
+export const DEEPSEEK_BASE_URL = '/deepseek';
+
+export const PROVIDERS = {
+  ollama: {
+    id: 'ollama',
+    label: 'Ollama (local)',
+    kind: 'local',
+    baseUrl: PROXY_BASE_URL,
+    defaultModel: 'llama3.1:8b',
+  },
+  deepseek: {
+    id: 'deepseek',
+    label: 'DeepSeek (cloud)',
+    kind: 'cloud',
+    baseUrl: DEEPSEEK_BASE_URL,
+    defaultModel: 'deepseek-chat',
+    // Listed for the dropdown when the API cannot be reached to enumerate them.
+    knownModels: ['deepseek-chat', 'deepseek-reasoner'],
+  },
+  demo: {
+    id: 'demo',
+    label: 'Demo data',
+    kind: 'demo',
+    defaultModel: null,
+  },
+};
+
+export const isCloudProvider = (engine) => PROVIDERS[engine]?.kind === 'cloud';
+
+export const DEFAULT_SETTINGS = {
+  // '/ollama' → Vite proxy. Any absolute URL → direct call (needs OLLAMA_ORIGINS).
+  baseUrl: env.VITE_OLLAMA_BASE_URL || PROXY_BASE_URL,
+  temperature: 0.2,
+  numCtx: 8192,
+  // Number of document pages sent to the model in a single request.
+  pagesPerBatch: 2,
+  // 'ollama' | 'deepseek' | 'demo'
+  engine: 'ollama',
+  // One model is remembered per provider, so switching back and forth does not
+  // lose the choice made on the other one.
+  models: {
+    ollama: env.VITE_OLLAMA_MODEL || PROVIDERS.ollama.defaultModel,
+    deepseek: PROVIDERS.deepseek.defaultModel,
+  },
+};
+
+/** The model currently in use, for the active provider. */
+export const activeModel = (settings) =>
+  settings.models?.[settings.engine] ??
+  PROVIDERS[settings.engine]?.defaultModel ??
+  '';
+
+/** The endpoint of the active provider: DeepSeek always goes through its proxy. */
+export const activeBaseUrl = (settings) =>
+  settings.engine === 'deepseek' ? DEEPSEEK_BASE_URL : settings.baseUrl;
+
+export const loadSettings = () => {
+  if (typeof localStorage === 'undefined') return { ...DEFAULT_SETTINGS };
+  try {
+    const stored = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? '{}');
+    return {
+      ...DEFAULT_SETTINGS,
+      ...stored,
+      models: { ...DEFAULT_SETTINGS.models, ...stored.models },
+    };
+  } catch {
+    return { ...DEFAULT_SETTINGS };
+  }
+};
+
+export const saveSettings = (settings) => {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(settings));
+  } catch {
+    /* storage unavailable (private mode): settings stay in memory only */
+  }
+};
+
+/** Normalises a base URL: no trailing slash, proxy path kept as-is. */
+export const normaliseBaseUrl = (value) => {
+  const trimmed = String(value ?? '').trim().replace(/\/+$/, '');
+  if (!trimmed) return PROXY_BASE_URL;
+  if (trimmed.startsWith('/')) return trimmed;
+  return /^https?:\/\//.test(trimmed) ? trimmed : `http://${trimmed}`;
+};
+
+export const isProxied = (baseUrl) => String(baseUrl ?? '').startsWith('/');

@@ -3,7 +3,7 @@
  * Docs: https://github.com/ollama/ollama/blob/main/docs/api.md
  */
 
-import { isProxied } from '../config/ollama.js';
+import { isProxied } from '../config/providers.js';
 
 export class OllamaError extends Error {
   constructor(message, { cause, hint } = {}) {
