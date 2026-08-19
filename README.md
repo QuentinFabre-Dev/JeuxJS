@@ -26,6 +26,28 @@ npm run dev          # http://localhost:5173
 The badge in the header shows the connection state. Green (`Local model`) means
 you can upload a document and hit **Analyse**.
 
+## Sample contract
+
+`public/samples/contrat-prestation-services.docx` is a fictional French service
+agreement (NOVATEK Conseil / Groupe Meridian) carrying **13 deliberate defects**
+across all five check types. Load it in one click from the upload zone —
+*Try with a sample contract* — or import it like any other file.
+
+| Type | Planted defects |
+| --- | --- |
+| Grammar | « les livrables … sera remis », « chacune des parties s'engagent » |
+| Spelling | « resiliation », « paiment », « confidentailité » |
+| Consistency | 45 000 € vs 48 000 € in the annex, two effective dates, « Novatech » vs « NOVATEK », PSSI used before being defined |
+| Clarity | a 60-word confidentiality clause, an ambiguous « celui-ci » |
+| Tone | « On fera au mieux pour livrer dans les temps », « devra juste nous prévenir » |
+
+The same contract is what **demo mode** replays, so a demo without any model
+installed shows the same document and the same findings.
+
+Both the `.docx` and the demo data are generated from one source,
+`tools/build-sample-contract.py` — the demo engine matches findings to sentences
+by exact text, and hand-editing one side would silently break the highlighting.
+
 ## Reviewing a document
 
 1. **Scanned PDF? Run recognition.** A PDF with no extractable text is a scan.

@@ -113,18 +113,49 @@ const attachRects = (blocks, pageText, spans) => {
 
 const parseTxt = async (file) => textToBlocks(await file.text());
 
+/**
+ * Turns the HTML mammoth produces into typed blocks.
+ *
+ * Word knows what a heading is; the raw text does not. Guessing from the text
+ * alone would send "Article 4 — Conditions financières" to the model as a
+ * sentence to correct, since it matches none of the shapes the heuristic
+ * recognises. Reading the structure removes the guess entirely.
+ */
+export const blocksFromHtml = (html) => {
+  const template = document.createElement('template');
+  template.innerHTML = html;
+
+  const blocks = [];
+  for (const element of template.content.querySelectorAll(
+    'h1, h2, h3, h4, h5, h6, p, li, td, th'
+  )) {
+    // A cell inside a paragraph, a list inside a cell: only take the innermost
+    // element, otherwise its text is emitted twice.
+    if (element.querySelector('h1, h2, h3, h4, h5, h6, p, li, td, th')) continue;
+
+    const text = element.textContent.replace(/\s+/g, ' ').trim();
+    if (!text) continue;
+
+    if (/^H[1-6]$/.test(element.tagName)) {
+      blocks.push({ kind: 'heading', text });
+      continue;
+    }
+    for (const sentence of splitSentences(text)) {
+      blocks.push({ kind: 'p', text: sentence });
+    }
+  }
+  return blocks;
+};
+
 const parseDocx = async (file) => {
   const mammoth = await import('mammoth/mammoth.browser.js');
   const buffer = await file.arrayBuffer();
 
-  // Two passes on purpose: the HTML feeds the viewer, the raw text feeds the
-  // sentence splitting (HTML tags would pollute it).
-  const [{ value: html }, { value: text }] = await Promise.all([
-    mammoth.convertToHtml({ arrayBuffer: buffer }),
-    mammoth.extractRawText({ arrayBuffer: buffer }),
-  ]);
+  // The HTML feeds the viewer and the block structure alike: it is the only
+  // form that still carries the headings.
+  const { value: html } = await mammoth.convertToHtml({ arrayBuffer: buffer });
 
-  return { blocks: textToBlocks(text), html };
+  return { blocks: blocksFromHtml(html), html };
 };
 
 /**

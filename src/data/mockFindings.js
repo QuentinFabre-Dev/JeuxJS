@@ -1,246 +1,153 @@
-// Realistic mock findings pool, grouped by skill.
-// Each finding's `original` must match EXACTLY a sentence in
-// src/data/mockDocument.js (same page + same text) so that the
-// document preview can highlight it.
+// GENERATED — do not edit by hand.
+// Source: tools/build-sample-contract.py
+//
+// Every `original` matches a sentence of mockDocument.js exactly (same page,
+// same text), which is what lets the preview highlight it in demo mode.
 
 export const MOCK_FINDINGS_POOL = [
-  // ── Grammar ────────────────────────────────────────────────
   {
-    skill: 'grammar',
-    page: 1,
-    original:
-      "The sales and marketing teams needs to collaborate more closely.",
-    suggestion:
-      "The sales and marketing teams need to collaborate more closely.",
-    explanation:
-      "Subject-verb agreement: the subject is plural, the verb must be plural.",
-    priority: 'high',
-    confidence: 0.96,
+    skill: "clarity",
+    page: 2,
+    original: "Cette obligation demeure en vigueur pendant cinq années à compter du terme du contrat, sauf si les informations concernées sont tombées dans le domaine public sans qu'aucune faute ne soit imputable à la partie qui les a reçues, étant précisé que la charge de la preuve de cette divulgation antérieure, qui doit être établie par tout moyen écrit, incombe à celle-ci, laquelle devra en informer l'autre partie dans un délai raisonnable.",
+    suggestion: "Cette obligation demeure en vigueur pendant cinq années à compter du terme du contrat. Elle cesse si les informations sont tombées dans le domaine public sans faute de la partie qui les a reçues. Il appartient à cette partie d'en apporter la preuve écrite et d'en informer l'autre sans délai.",
+    explanation: "Phrase de plus de soixante mots enchaînant quatre subordonnées : la découper rend l'obligation lisible.",
+    priority: "medium",
+    confidence: 0.88,
   },
   {
-    skill: 'grammar',
+    skill: "clarity",
     page: 2,
-    original:
-      "Neither of the documents submitted have been approved by management.",
-    suggestion:
-      "Neither of the documents submitted has been approved by management.",
-    explanation:
-      "\u201CNeither\u201D is singular; the verb should agree (has, not have).",
-    priority: 'medium',
+    original: "Le Prestataire conserve la propriété de ses méthodes et outils préexistants, celui-ci ne pouvant les revendiquer.",
+    suggestion: "Le Prestataire conserve la propriété de ses méthodes et outils préexistants, que le Client ne peut revendiquer.",
+    explanation: "« celui-ci » peut désigner le Prestataire comme le Client : l'ambiguïté porte sur qui ne peut rien revendiquer.",
+    priority: "high",
     confidence: 0.89,
   },
   {
-    skill: 'grammar',
-    page: 4,
-    original:
-      "Following Monday's meeting, we has decided to postpone the launch.",
-    suggestion:
-      "Following Monday's meeting, we have decided to postpone the launch.",
-    explanation:
-      "The subject \u201Cwe\u201D requires \u201Chave\u201D as the auxiliary verb.",
-    priority: 'medium',
-    confidence: 0.84,
-  },
-
-  // ── Spelling ───────────────────────────────────────────────
-  {
-    skill: 'spelling',
+    skill: "consistency",
     page: 1,
-    original:
-      "The report presents the key figures for the last quater.",
-    suggestion:
-      "The report presents the key figures for the last quarter.",
-    explanation: "Typo: \u201Cquater\u201D \u2192 \u201Cquarter\u201D.",
-    priority: 'low',
-    confidence: 0.99,
-  },
-  {
-    skill: 'spelling',
-    page: 3,
-    original:
-      "Employees must follow the security procceedure.",
-    suggestion:
-      "Employees must follow the security procedure.",
-    explanation:
-      "Misspelling: \u201Cprocceedure\u201D \u2192 \u201Cprocedure\u201D.",
-    priority: 'low',
-    confidence: 0.98,
-  },
-  {
-    skill: 'spelling',
-    page: 5,
-    original:
-      "The company is committed to respecting its CSR committment.",
-    suggestion:
-      "The company is committed to respecting its CSR commitments.",
-    explanation:
-      "\u201Ccommittment\u201D should be \u201Ccommitments\u201D (one \u201Ct\u201D, plural).",
-    priority: 'medium',
+    original: "Il est expressément convenu que le contrat prend effet le 1er avril 2025.",
+    suggestion: "Il est expressément convenu que le contrat prend effet le 1er mars 2025.",
+    explanation: "Contradiction avec la date d'entrée en vigueur fixée en début d'article 3 (1er mars 2025).",
+    priority: "high",
     confidence: 0.93,
   },
-
-  // ── Consistency / context ──────────────────────────────────
   {
-    skill: 'consistency',
-    page: 2,
-    original:
-      "The project will be delivered in Q2 2025 with a budget of \u20ac120k.",
-    suggestion:
-      "The project will be delivered in Q3 2025 with a budget of \u20ac120k.",
-    explanation:
-      "Inconsistent with section 4.1 which states a Q3 2025 delivery.",
-    priority: 'high',
-    confidence: 0.78,
-  },
-  {
-    skill: 'consistency',
-    page: 6,
-    original:
-      "This procedure replaces version v1.2 dated 03/14/2024.",
-    suggestion:
-      "This procedure replaces version v1.3 dated 03/14/2024.",
-    explanation:
-      "Version v1.3 is referenced on page 1 \u2014 internal contradiction.",
-    priority: 'high',
-    confidence: 0.81,
-  },
-  {
-    skill: 'consistency',
-    page: 7,
-    original:
-      "Users can reset their password at any time.",
-    suggestion:
-      "Users can reset their password once per month (see Security section).",
-    explanation:
-      "Contradicts the Security section which enforces a monthly limit.",
-    priority: 'medium',
-    confidence: 0.72,
-  },
-
-  // ── Clarity ────────────────────────────────────────────────
-  {
-    skill: 'clarity',
-    page: 3,
-    original:
-      "Within the framework of the operational implementation of the overall strategy, it will be appropriate, in due course, to articulate the functional building blocks in such a way as to ensure transversal alignment.",
-    suggestion:
-      "We will align the functional modules with the overall strategy during rollout.",
-    explanation:
-      "Sentence too long (35+ words) and vague. Rewrite recommended.",
-    priority: 'medium',
-    confidence: 0.87,
-  },
-  {
-    skill: 'clarity',
-    page: 5,
-    original:
-      "The final deliverable, which will need to be validated by the stakeholders, will be made available.",
-    suggestion:
-      "Stakeholders will validate the final deliverable before it is made available.",
-    explanation: "Prefer the active voice to improve readability.",
-    priority: 'low',
-    confidence: 0.85,
-  },
-  {
-    skill: 'clarity',
-    page: 8,
-    original:
-      "It is to be noted that a certain number of elements remain to be clarified.",
-    suggestion:
-      "Several points remain to be clarified: [list the items].",
-    explanation:
-      "Vague wording \u2014 explicitly list the items that need clarification.",
-    priority: 'medium',
-    confidence: 0.79,
-  },
-
-  // ── Tone / style ───────────────────────────────────────────
-  {
-    skill: 'tone',
+    skill: "consistency",
     page: 1,
-    original:
-      "Hey team, hope you're all good :)",
-    suggestion: "Dear all,",
-    explanation:
-      "Too casual for an external professional communication.",
-    priority: 'high',
+    original: "Le montant total des prestations est fixé à 45 000 euros hors taxes.",
+    suggestion: "Le montant total des prestations est fixé à 48 000 euros hors taxes.",
+    explanation: "Le budget indiqué en annexe 1 est de 48 000 euros hors taxes : les deux montants doivent concorder.",
+    priority: "high",
     confidence: 0.91,
   },
   {
-    skill: 'tone',
-    page: 4,
-    original:
-      "It's just impossible to meet this schedule.",
-    suggestion:
-      "Meeting this schedule represents a significant challenge given the current resources.",
-    explanation:
-      "Rephrase for a more measured and constructive tone.",
-    priority: 'medium',
-    confidence: 0.83,
+    skill: "consistency",
+    page: 1,
+    original: "Novatech Conseil met en œuvre les moyens humains et techniques nécessaires à la bonne exécution de la mission.",
+    suggestion: "NOVATEK Conseil met en œuvre les moyens humains et techniques nécessaires à la bonne exécution de la mission.",
+    explanation: "Le Prestataire est désigné « NOVATEK Conseil » dans le préambule : la dénomination sociale doit être identique partout.",
+    priority: "high",
+    confidence: 0.9,
   },
   {
-    skill: 'tone',
-    page: 6,
-    original:
-      "Please take care of this ASAP.",
-    suggestion:
-      "Please address this as soon as possible, ideally by Friday.",
-    explanation:
-      "Avoid abbreviations and provide a clear deadline.",
-    priority: 'low',
-    confidence: 0.88,
+    skill: "consistency",
+    page: 1,
+    original: "Le Prestataire remettra une PSSI conforme aux exigences du Client.",
+    suggestion: "Le Prestataire remettra une politique de sécurité des systèmes d'information (PSSI) conforme aux exigences du Client.",
+    explanation: "Le sigle PSSI est employé ici avant d'être défini, ce qui n'intervient qu'à l'article 8.",
+    priority: "medium",
+    confidence: 0.86,
+  },
+  {
+    skill: "grammar",
+    page: 1,
+    original: "Les livrables mentionnés à l'article 2 sera remis au Client selon le calendrier convenu entre les parties.",
+    suggestion: "Les livrables mentionnés à l'article 2 seront remis au Client selon le calendrier convenu entre les parties.",
+    explanation: "Accord sujet-verbe : le sujet « les livrables » est au pluriel, le verbe doit l'être aussi.",
+    priority: "high",
+    confidence: 0.97,
+  },
+  {
+    skill: "grammar",
+    page: 1,
+    original: "Chacune des parties s'engagent à respecter le calendrier figurant en annexe.",
+    suggestion: "Chacune des parties s'engage à respecter le calendrier figurant en annexe.",
+    explanation: "« Chacune » est un pronom singulier : le verbe s'accorde au singulier.",
+    priority: "medium",
+    confidence: 0.94,
+  },
+  {
+    skill: "spelling",
+    page: 1,
+    original: "Le présent contrat prend effet à la date de signature et court jusqu'à sa resiliation dans les conditions prévues à l'article 11.",
+    suggestion: "Le présent contrat prend effet à la date de signature et court jusqu'à sa résiliation dans les conditions prévues à l'article 11.",
+    explanation: "« resiliation » s'écrit « résiliation », avec un accent aigu.",
+    priority: "medium",
+    confidence: 0.95,
+  },
+  {
+    skill: "spelling",
+    page: 1,
+    original: "Tout paiment intervenant après cette date donnera lieu à des pénalités de retard calculées au taux légal.",
+    suggestion: "Tout paiement intervenant après cette date donnera lieu à des pénalités de retard calculées au taux légal.",
+    explanation: "« paiment » s'écrit « paiement ».",
+    priority: "medium",
+    confidence: 0.96,
+  },
+  {
+    skill: "spelling",
+    page: 1,
+    original: "Le Prestataire garantit la confidentailité des informations transmises par le Client pendant toute la durée du contrat.",
+    suggestion: "Le Prestataire garantit la confidentialité des informations transmises par le Client pendant toute la durée du contrat.",
+    explanation: "« confidentailité » s'écrit « confidentialité ».",
+    priority: "medium",
+    confidence: 0.95,
+  },
+  {
+    skill: "tone",
+    page: 1,
+    original: "On fera au mieux pour livrer dans les temps.",
+    suggestion: "Le Prestataire met en œuvre les moyens nécessaires au respect des délais convenus.",
+    explanation: "Registre familier et engagement imprécis, incompatibles avec la portée juridique d'un contrat.",
+    priority: "high",
+    confidence: 0.92,
+  },
+  {
+    skill: "tone",
+    page: 1,
+    original: "Le Client devra juste nous prévenir en cas de souci sur les accès.",
+    suggestion: "Le Client informe le Prestataire sans délai de toute difficulté affectant la mise à disposition des accès.",
+    explanation: "Formulation familière et first-person inadaptée : un contrat désigne les parties par leur qualité.",
+    priority: "high",
+    confidence: 0.93,
   },
 ];
 
-// Templates reused when the user adds a "custom" analysis check.
-// Each template references a sentence that exists in mockDocument.js
-// but is NOT part of the built-in findings, so the custom finding
-// still highlights correctly in the document preview.
-// `explanationTpl` uses a {name} placeholder replaced with the
-// user-provided label at runtime.
+/** Templates used to fabricate a finding for each user-defined check. */
 export const CUSTOM_CHECK_TEMPLATES = [
   {
-    page: 1,
-    original:
-      "This document summarizes the first quarter of 2025 and the areas for improvement identified by the various operational teams.",
-    suggestion:
-      "Add an executive summary with key figures, risks and decisions required.",
-    explanationTpl:
-      "Custom check \u201C{name}\u201D suggests adding a dedicated TL;DR section at the very top.",
-    priority: 'medium',
-    confidence: 0.74,
-  },
-  {
     page: 2,
-    original:
-      "A steering committee will meet in April to adjust these items.",
-    suggestion:
-      "Specify attendees, agenda, and expected decisions for the steering committee.",
-    explanationTpl:
-      "Custom check \u201C{name}\u201D flags missing governance detail.",
-    priority: 'low',
-    confidence: 0.71,
+    original: "Le montant total des prestations est fixé à 45 000 euros hors taxes.",
+    suggestion: "Le montant total des prestations est fixé à 48 000 euros hors taxes (cf. annexe 1).",
+    explanationTpl: "Contrôle « {name} » : le montant ne correspond pas à celui de l'annexe.",
+    priority: "high",
+    confidence: 0.9,
   },
   {
-    page: 6,
-    original:
-      "Any change must be reviewed by the quality lead before publication.",
-    suggestion:
-      "Reference the change-management SOP (e.g. DOC-QC-014) and the reviewer's contact.",
-    explanationTpl:
-      "Custom check \u201C{name}\u201D: process references are missing.",
-    priority: 'medium',
-    confidence: 0.82,
+    page: 1,
+    original: "Le présent contrat est conclu pour une durée de douze mois à compter du 1er mars 2025.",
+    suggestion: "Le présent contrat est conclu pour une durée de douze mois à compter du 1er mars 2025, renouvelable par tacite reconduction.",
+    explanationTpl: "Contrôle « {name} » : la clause de reconduction attendue est absente.",
+    priority: "medium",
+    confidence: 0.84,
   },
   {
-    page: 7,
-    original:
-      "The password management policy was updated this year.",
-    suggestion:
-      "Include the policy version number, effective date and owner.",
-    explanationTpl:
-      "Custom check \u201C{name}\u201D: insufficient traceability on policy updates.",
-    priority: 'medium',
-    confidence: 0.76,
+    page: 3,
+    original: "Le présent contrat est soumis au droit français.",
+    suggestion: "Le présent contrat est soumis au droit français, à l'exclusion de ses règles de conflit de lois.",
+    explanationTpl: "Contrôle « {name} » : la clause de droit applicable gagnerait à être précisée.",
+    priority: "low",
+    confidence: 0.78,
   },
 ];

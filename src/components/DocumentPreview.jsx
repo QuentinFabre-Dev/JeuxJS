@@ -45,7 +45,9 @@ export default function DocumentPreview({
 
   // Real uploaded document when available, mocked one in demo mode.
   const doc = documentModel ?? MOCK_DOCUMENT;
-  const kind = documentModel?.kind ?? 'text';
+  // The mocked document declares its own kind, so demo mode labels itself
+  // "Word" like the real file it stands for.
+  const kind = documentModel?.kind ?? doc.kind ?? 'text';
   const { label, unit, Icon } = KIND_LABELS[kind] ?? KIND_LABELS.text;
   const zoom = ZOOM_STEPS[zoomIndex];
 
