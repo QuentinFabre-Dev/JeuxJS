@@ -13,6 +13,7 @@ them, and a duplicate finding costs the reader more than it saves.
 Rewriting a sentence in your own preferred style is not a finding. There must be
 something a reader would actually stumble on.
 {{language}}
+{{domain}}
 Sentences to review, each prefixed by its id:
 
 {{sentences}}

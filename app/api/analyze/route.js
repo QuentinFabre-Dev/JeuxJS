@@ -22,6 +22,7 @@ import {
   toVerify,
 } from '../../../lib/checks/critic.js';
 import { documentSentences } from '../../../lib/checks/sentences.js';
+import { packFor } from '../../../lib/checks/domains/index.js';
 import { requireSession, unauthorised } from '../../../lib/session.js';
 
 export const runtime = 'nodejs';
@@ -53,13 +54,20 @@ export async function POST(request) {
       // Built here rather than trusted from the client: the ids the model
       // answers with must match what the browser will highlight.
       sentences: documentSentences(documentModel),
-      context: {
-        docType: body.docType,
-        serviceLine: body.serviceLine,
-        language: body.language,
-        glossary: body.glossary ?? [],
-        requirements: body.requirements ?? [],
-      },
+      context: (() => {
+        // The pack is resolved here, not trusted from the client: a glossary
+        // decides what is *not* a mistake, so it must come from the versioned
+        // code rather than from a request body.
+        const pack = packFor(body.serviceLine);
+        return {
+          docType: body.docType,
+          serviceLine: body.serviceLine,
+          language: body.language,
+          domain: pack.context,
+          glossary: [...pack.glossary, ...(body.glossary ?? [])],
+          requirements: [...(body.requirements ?? []), ...pack.requirements],
+        };
+      })(),
       policy: body.criticPolicy ?? DEFAULT_POLICY,
       signal: request.signal,
     })

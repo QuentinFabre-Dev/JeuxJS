@@ -12,6 +12,7 @@ These requirements need judgement, not a search: a requirement about a specific
 word or name has already been checked elsewhere. Do not report the mere
 presence of a term.
 {{language}}
+{{domain}}
 Sentences to review, each prefixed by its id:
 
 {{sentences}}

@@ -1,0 +1,88 @@
+{
+  "name": "cyber-report",
+  "serviceLine": "cyber",
+  "language": "français",
+  "docType": "report",
+  "customChecks": [
+    "aucun nom de client hors page de garde : \"Northwind\""
+  ],
+  "pages": [
+    [
+      {
+        "kind": "heading",
+        "text": "Audit de sécurité — Northwind"
+      },
+      {
+        "kind": "p",
+        "text": "Ce rapport présente les résultats de l'audit mené du 12/03/2025 au 3 avril 2025."
+      }
+    ],
+    [
+      {
+        "kind": "heading",
+        "text": "Vulnérabilités"
+      },
+      {
+        "kind": "p",
+        "text": "Le score CVSS de la faille principale est de 9,1."
+      },
+      {
+        "kind": "p",
+        "text": "L'exposition est critique, il faut agir vite."
+      },
+      {
+        "kind": "p",
+        "text": "Le budget de remédiation est estimé à 120 k€ pour l'exercice."
+      }
+    ],
+    [
+      {
+        "kind": "heading",
+        "text": "Recommandations"
+      },
+      {
+        "kind": "p",
+        "text": "Nous recomandons la mise en place du MFA sur tous les comptes à privilèges."
+      },
+      {
+        "kind": "p",
+        "text": "Le budget de remédiation est estimé à 150 k€ pour l'exercice."
+      },
+      {
+        "kind": "p",
+        "text": "Le rapport a été relu par les équipes de Northwind."
+      },
+      {
+        "kind": "p",
+        "text": "Le Common Vulnerability Scoring System (CVSS) sert de référence de criticité."
+      }
+    ]
+  ],
+  "expected": [
+    {
+      "id": "p2s2",
+      "skill": "consistency",
+      "why": "CVSS employé avant sa définition"
+    },
+    {
+      "id": "p3s2",
+      "skill": "spelling",
+      "why": "\"recomandons\""
+    },
+    {
+      "id": "p3s3",
+      "skill": "consistency",
+      "why": "budget de remédiation : 120 k€ puis 150 k€"
+    },
+    {
+      "id": "p3s4",
+      "skill": "custom",
+      "why": "nom du client hors page de garde"
+    },
+    {
+      "id": "p1s2",
+      "skill": "consistency",
+      "why": "deux formats de date"
+    }
+  ]
+}

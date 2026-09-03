@@ -6,6 +6,7 @@ import { LANGUAGES, languageLabel } from '../services/languageDetect.js';
 import SkillChip from './SkillChip.jsx';
 import CustomCheckChip from './CustomCheckChip.jsx';
 import ReviewEstimate from './ReviewEstimate.jsx';
+import { packFor } from '../../lib/checks/domains/index.js';
 
 export default function AnalysisConfig({
   selectedSkills,
@@ -292,9 +293,26 @@ export default function AnalysisConfig({
             </option>
           ))}
         </select>
-        <p className="mt-2 text-[11px] text-slate-400">
-          Helps tailor the analysis to your practice context.
-        </p>
+        {/* What picking this line actually changes, rather than a promise. */}
+        {(() => {
+          const pack = packFor(serviceLine);
+          return pack.glossary.length ? (
+            <p className="mt-2 text-[11px] text-slate-400">
+              <span className="font-medium text-slate-600">{pack.glossary.length} terms</span>{' '}
+              treated as house vocabulary rather than misspellings, and{' '}
+              <span className="font-medium text-slate-600">
+                {pack.requirements.length} standing requirement
+                {pack.requirements.length > 1 ? 's' : ''}
+              </span>{' '}
+              applied to every page.
+            </p>
+          ) : (
+            <p className="mt-2 text-[11px] text-slate-400">
+              No pack for this line yet — the review runs with the generic
+              rules.
+            </p>
+          );
+        })()}
       </section>
     </div>
   );

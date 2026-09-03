@@ -187,12 +187,16 @@ lib/
     schema.js                 la forme unique des findings                   ✔ lot C
     sentences.js              document → phrases, partagé client/serveur     ✔ lot C
     critic.js                 politiques, verdicts, taux de rejet            ✔ lot D
+    domains/                  packs Audit / Cyber / Finance / Tax            ✔ lot E
     merge.js                  dédoublonnage phrase × critère
     local/
       terminology.js  figures.js  patterns.js  index.js         ✔ lot B
     llm/
       _system.md  mechanical.md  clarity-tone.md                     ✔ lot C
       consistency.md  requirements.md  critic.md                     ✔ lot D
+bench/corpus/*.json           documents annotés                              ✔ lot F
+bench/score.js                précision, rappel, F1                          ✔ lot F
+scripts/bench.mjs             le banc                                        ✔ lot F
 src/
   services/reviewStream.js    consommation du flux côté navigateur           ✔ lot A
   services/reviewService.js   déterministes puis modèles, une seule porte    ✔ lot C
@@ -247,10 +251,47 @@ triage, score, structure de l'export Excel.
 | **B** ✔ | Contrôles déterministes en JS : acronyme employé avant sa définition, variantes d'un terme du glossaire, deux écritures d'un même montant, formats de date mélangés, terme interdit trouvé. **Gratuits et instantanés** (30 ms sur 200 pages) | *fait* |
 | **C** ✔ | Contrôles modèles en `.md` (mécanique sur le petit palier, clarté + ton, cohérence, exigences sur le gros), SDK OpenAI, sorties structurées strictes, raisonnement `minimal`, instructions cachables, `usage` par palier, reçu affiché en fin de revue, `App.jsx` branché sur le flux | *fait* |
 | **D** ✔ | Vérification par un second appel (politiques `off` / `uncertain` / `all`, réglable dans l'interface), provenance sur la carte et dans l'export, taux de rejet publié | *fait* |
-| **E** | Packs métier : glossaires, motifs, contrôles propres au métier | ~1 j |
-| **F** | Banc d'évaluation : latence, précision, rappel et coût **mesurés** par sélection ; comparaison des paliers (`nano` / `mini` / `gpt-5`) sur la passe mécanique ; garde‑fous de budget | ~1,5 j |
+| **E** ✔ | Packs métier Audit / Cyber / Finance / Tax : glossaire, exigences permanentes, contexte injecté dans les quatre prompts ; le sélecteur de service line dit ce qu'il change | *fait* |
+| **F** ✔ | Banc d'évaluation : corpus annoté, précision / rappel / F1 / durée / coût par sélection, comparaison de paliers via `--tier`, garde‑fou de dépense avant tout appel payant | *fait* |
 
-Reste ≈ **2,5 jours**.
+**Les six lots sont livrés.**
+
+### Le banc, et ce qu'il reste à mesurer
+
+```
+npm run bench                 les contrôles déterministes. Sans clé, sans coût,
+                              sans réseau : exécutable à chaque commit.
+npm run bench -- --model      la revue complète. Appelle l'API, dépense de
+                              l'argent, et demande confirmation en annonçant
+                              le montant estimé.
+npm run bench -- --tier nano  rejoue la passe mécanique sur un autre palier.
+```
+
+État actuel, sur le corpus annoté :
+
+| Configuration | Précision | Rappel | Durée | Coût |
+| --- | --- | --- | --- | --- |
+| Contrôles déterministes | 100 % | 100 % | < 1 s | 0 $ |
+| Revue complète | *à mesurer* | *à mesurer* | *à mesurer* | *à mesurer* |
+
+La seconde ligne attend une clé. C'est volontairement laissé vide plutôt que
+rempli d'estimations : **tout le reste de ce document est chiffré, cette ligne
+est la seule qui sera mesurée**, et c'est elle qui corrigera les autres.
+
+Le banc s'est déjà rendu utile une fois : il a signalé un `p2s2::consistency`
+manquant sur le corpus cyber. C'était le corpus qui avait tort — rien dans le
+document ne définissait « CVSS », et le contrôle refuse délibérément de
+signaler un acronyme que personne n'explicite. L'annotation a été corrigée,
+pas le contrôle.
+
+Ce qu'il reste, une fois la clé disponible :
+
+1. Lancer `npm run bench -- --model` et **remplacer les tableaux de ce document
+   par les mesures**, y compris à la hausse.
+2. Rejouer avec `--tier nano` et `--tier main` : la question « l'orthographe
+   a‑t‑elle besoin du gros modèle » mérite une réponse, pas une opinion.
+3. Étoffer le corpus. Deux documents suffisent à valider le harnais, pas à
+   régler des prompts.
 
 ### La vérification, telle qu'elle est faite
 

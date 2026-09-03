@@ -13,6 +13,7 @@ clarity and tone are covered by other reviewers. A finding here must involve
 
 Report the sentence that should change, not both.
 {{language}}
+{{domain}}
 Document headings, for context:
 
 {{headings}}

@@ -11,6 +11,7 @@ Report a proper noun, an acronym or a technical term as misspelled only if you
 are certain — a name you do not recognise is not a mistake.
 {{language}}
 {{glossary}}
+{{domain}}
 Sentences to review, each prefixed by its id:
 
 {{sentences}}

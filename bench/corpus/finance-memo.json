@@ -1,0 +1,23 @@
+{
+  "name": "finance-memo",
+  "serviceLine": "finance",
+  "language": "français",
+  "docType": "report",
+  "customChecks": [],
+  "pages": [
+    [
+      { "kind": "heading", "text": "Note de valorisation" },
+      { "kind": "p", "text": "La valorisation retenue s'établit à 4,2 M€ au 31 décembre." },
+      { "kind": "p", "text": "L'EBITDA progressera de 12 % l'an prochain." }
+    ],
+    [
+      { "kind": "p", "text": "La valorisation retenue s'établit à 4.2M€ selon la méthode des multiples." },
+      { "kind": "p", "text": "Les flux de trésorerie sont stable sur la période." }
+    ]
+  ],
+  "expected": [
+    { "id": "p2s1", "skill": "consistency", "why": "deux écritures du même montant" },
+    { "id": "p2s2", "skill": "grammar", "why": "\"sont stable\"" },
+    { "id": "p1s3", "skill": "tone", "why": "projection énoncée à l'indicatif comme un fait" }
+  ]
+}

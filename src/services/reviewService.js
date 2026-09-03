@@ -16,6 +16,7 @@ import { planTasks } from '../../lib/checks/planner.js';
 import { checkById } from '../../lib/checks/registry.js';
 import { runLocalChecks, splitRequirements } from '../../lib/checks/local/index.js';
 import { documentSentences, forTransport } from '../../lib/checks/sentences.js';
+import { packFor } from '../../lib/checks/domains/index.js';
 
 /** Builds the id → sentence map the normaliser anchors findings with. */
 const sentenceIndex = (documentModel) => {
@@ -49,10 +50,16 @@ export const runCloudReview = async ({
   onProgress,
   onCheckError,
 }) => {
+  // The same pack the server resolves: the deterministic checks must know the
+  // business vocabulary too, or they report the practice's own words as drift.
+  const pack = packFor(serviceLine);
+  const vocabulary = [...pack.glossary, ...glossary];
+  const requirements = [...customChecks, ...pack.requirements];
+
   const index = sentenceIndex(documentModel);
   const sentences = documentSentences(documentModel);
   const selection = [...skills, ...(customChecks.length ? ['custom'] : [])];
-  const { pattern, semantic } = splitRequirements(customChecks);
+  const { pattern, semantic } = splitRequirements(requirements);
 
   const seen = new Set();
   const emit = (raw) => {
@@ -91,7 +98,7 @@ export const runCloudReview = async ({
   // Free and instant: run them first so the list is never empty for long.
   for (const id of localChecks) {
     for (const raw of runLocalChecks([id], sentences, {
-      glossary,
+      glossary: vocabulary,
       requirements: pattern,
     })) {
       // Deterministic findings are not sent to the critic: a term either

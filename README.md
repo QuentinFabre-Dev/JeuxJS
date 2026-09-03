@@ -136,6 +136,19 @@ To call Ollama directly instead of through the proxy, set the endpoint to
 `http://localhost:11434` in the settings dialog and start the server with
 `OLLAMA_ORIGINS=* ollama serve`.
 
+## Measuring the review
+
+```bash
+npm run bench                 # deterministic checks: no key, no cost, no network
+npm run bench -- --model      # the full review; asks before spending
+npm run bench -- --tier nano  # replay the mechanical pass on another tier
+```
+
+The bench scores the review against annotated documents in `bench/corpus/`:
+precision, recall, F1, duration and the real cost read back from the API. Every
+duration and price quoted in `docs/plan-cloud-qa.md` is an estimate until this
+has run — its job is to correct them, not to confirm them.
+
 ## Custom checks and playbooks
 
 Beyond the five built-in skills (grammar, spelling, consistency, clarity, tone),

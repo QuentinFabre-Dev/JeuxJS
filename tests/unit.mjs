@@ -26,6 +26,8 @@ import { planTasks, taskCountByEngine } from '../lib/checks/planner.js';
 import { estimateReview, formatCost, formatDuration } from '../lib/checks/estimate.js';
 import { checksForSkills } from '../lib/checks/registry.js';
 import { runLocalChecks, splitRequirements } from '../lib/checks/local/index.js';
+import { PACKS, packFor, GENERIC_PACK } from '../lib/checks/domains/index.js';
+import { scoreFindings } from '../bench/score.js';
 import {
   applyVerdicts,
   batchCandidates,
@@ -595,6 +597,72 @@ eq(
   );
   eq('le taux de rejet est publié', Math.round(dropRate(decisions) * 100), 33);
   eq('un critique qui ne rejette jamais se voit tout de suite', dropRate([{ verdict: 'keep' }]), 0);
+}
+
+// ── packs métier ────────────────────────────────────────────
+{
+  eq('une service line sans pack retombe sur le générique', packFor('deal').id, GENERIC_PACK.id);
+  ok('le pack cyber connaît le vocabulaire du métier', packFor('cyber').glossary.includes('CVSS'));
+  ok('et porte ses exigences permanentes', packFor('cyber').requirements.length >= 2);
+
+  for (const [id, pack] of Object.entries(PACKS)) {
+    ok(`le pack ${id} est complet`, pack.glossary.length > 0 && pack.context.length > 40);
+    eq(`le pack ${id} porte bien son identifiant`, pack.id, id);
+  }
+
+  // Le glossaire décide de ce qui n'est PAS une faute : un terme du pack ne
+  // doit jamais être signalé comme une variante de lui-même.
+  const doc = [{ id: 'p1s1', page: 1, text: 'Le score CVSS est élevé.' }];
+  eq(
+    'un terme du glossaire écrit correctement ne déclenche rien',
+    runLocalChecks(['terminology'], doc, { glossary: packFor('cyber').glossary }).length,
+    0
+  );
+}
+
+// ── banc d'évaluation ───────────────────────────────────────
+{
+  const expected = [
+    { id: 'p1s1', skill: 'spelling' },
+    { id: 'p2s1', skill: 'consistency' },
+  ];
+
+  eq(
+    'tout trouvé, rien inventé',
+    (() => {
+      const score = scoreFindings(
+        [
+          { sentenceId: 'p1s1', skill: 'spelling' },
+          { sentenceId: 'p2s1', skill: 'consistency' },
+        ],
+        expected
+      );
+      return [score.precision, score.recall];
+    })(),
+    [1, 1]
+  );
+
+  eq(
+    'la bonne phrase pour la mauvaise raison ne compte pas',
+    scoreFindings([{ sentenceId: 'p1s1', skill: 'clarity' }], expected).truePositives,
+    0
+  );
+
+  const noisy = scoreFindings(
+    [
+      { sentenceId: 'p1s1', skill: 'spelling' },
+      { sentenceId: 'p3s1', skill: 'clarity' },
+    ],
+    expected
+  );
+  eq('un faux positif fait tomber la précision', Math.round(noisy.precision * 100), 50);
+  eq('et il est nommé, pas seulement compté', noisy.falsePositives, ['p3s1::clarity']);
+  eq('les défauts manqués aussi', noisy.missed, ['p2s1::consistency']);
+  eq(
+    'un relecteur muet a une précision parfaite et un rappel nul',
+    [scoreFindings([], expected).precision, scoreFindings([], expected).recall],
+    [1, 0]
+  );
 }
 
 // ── session ─────────────────────────────────────────────────
