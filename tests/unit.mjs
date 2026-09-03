@@ -29,6 +29,12 @@ import { runLocalChecks, splitRequirements } from '../lib/checks/local/index.js'
 import { PACKS, packFor, GENERIC_PACK } from '../lib/checks/domains/index.js';
 import { scoreFindings } from '../bench/score.js';
 import {
+  batchCommitments,
+  relevantSentences,
+  rollup,
+  rollupLabel,
+} from '../lib/checks/sow.js';
+import {
   applyVerdicts,
   batchCandidates,
   dropRate,
@@ -663,6 +669,102 @@ eq(
     [scoreFindings([], expected).precision, scoreFindings([], expected).recall],
     [1, 0]
   );
+}
+
+// ── conformité au SoW ───────────────────────────────────────
+{
+  const sentences = [
+    { id: 'p1s1', page: 1, text: 'Ce rapport couvre la segmentation réseau du datacenter.' },
+    { id: 'p2s1', page: 2, text: 'Un atelier de restitution a été tenu le 3 avril.' },
+    { id: 'p3s1', page: 3, text: 'Les sauvegardes sont chiffrées au repos.' },
+  ];
+
+  const commitment = {
+    id: 'c1',
+    text: 'Un atelier de restitution doit être organisé.',
+    quote: 'Le prestataire organise un atelier de restitution.',
+    kind: 'deliverable',
+    critical: true,
+  };
+
+  const picked = relevantSentences(commitment, sentences, 1);
+  ok(
+    'la phrase pertinente est sélectionnée sans appeler personne',
+    picked.some((sentence) => sentence.id === 'p2s1')
+  );
+  eq(
+    'la sélection reste dans l’ordre de lecture',
+    relevantSentences(commitment, sentences, 3).map((s) => s.id),
+    ['p1s1', 'p2s1', 'p3s1']
+  );
+  ok(
+    'un engagement dont aucun mot n’apparaît reçoit quand même de quoi juger',
+    relevantSentences(
+      { id: 'c9', text: 'Zzz qqq wwx.', quote: '', kind: 'scope', critical: false },
+      sentences
+    ).length > 0
+  );
+
+  eq('les engagements partent par paquets', batchCommitments([1, 2, 3, 4, 5, 6, 7], 6).map((b) => b.length), [6, 1]);
+
+  const commitments = [
+    { id: 'c1', critical: true },
+    { id: 'c2', critical: false },
+    { id: 'c3', critical: false },
+  ];
+
+  eq(
+    'tout tenu : conforme',
+    rollup(commitments, [
+      { id: 'c1', status: 'met' },
+      { id: 'c2', status: 'met' },
+      { id: 'c3', status: 'met' },
+    ]).outcome,
+    'compliant'
+  );
+  eq(
+    'un manque non critique : des écarts',
+    rollup(commitments, [
+      { id: 'c1', status: 'met' },
+      { id: 'c2', status: 'partial' },
+      { id: 'c3', status: 'missing' },
+    ]).outcome,
+    'gaps'
+  );
+  eq(
+    'un engagement critique manquant : rupture, quel que soit le score',
+    rollup(commitments, [
+      { id: 'c1', status: 'missing' },
+      { id: 'c2', status: 'met' },
+      { id: 'c3', status: 'met' },
+    ]).outcome,
+    'breach'
+  );
+  eq(
+    'une contradiction aussi, même sur un engagement mineur',
+    rollup(commitments, [
+      { id: 'c1', status: 'met' },
+      { id: 'c2', status: 'met' },
+      { id: 'c3', status: 'contradicted' },
+    ]).outcome,
+    'breach'
+  );
+  eq(
+    'un paquet en échec laisse ses engagements non vérifiés, jamais tenus',
+    rollup(commitments, [{ id: 'c1', status: 'met' }]).counts,
+    { met: 1, partial: 0, missing: 0, contradicted: 0, unchecked: 2 }
+  );
+  ok(
+    'la ligne du haut nomme ce qui bloque',
+    rollupLabel(
+      rollup(commitments, [
+        { id: 'c1', status: 'met' },
+        { id: 'c2', status: 'met' },
+        { id: 'c3', status: 'contradicted' },
+      ])
+    ).includes('do not send')
+  );
+  eq('un SoW sans engagement le dit', rollupLabel(rollup([], [])), 'No commitment found in the statement of work.');
 }
 
 // ── session ─────────────────────────────────────────────────

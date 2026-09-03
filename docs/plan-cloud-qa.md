@@ -256,6 +256,49 @@ triage, score, structure de l'export Excel.
 
 **Les six lots sont livrés.**
 
+## Conformité au SoW — une question à part
+
+Ajoutée après les six lots, et **délibérément à côté** de la revue qualité
+plutôt que dedans.
+
+La raison tient en une phrase : *un finding qualité pointe une phrase qui est
+fausse, un écart contractuel pointe une phrase qui est **absente***. Il n'y a
+rien à surligner pour un engagement manquant, rien à corriger en place, et le
+faire entrer dans la liste des findings aurait dégradé les deux. D'où un
+panneau, un endpoint (`/api/sow`) et une forme de résultat propres.
+
+**Deux passes, et une étape gratuite entre les deux.**
+
+1. Lire le SoW et lister ce qu'il engage : livrables, périmètre, **exclusions**,
+   contraintes, format, dates. Chaque engagement cite sa clause mot pour mot —
+   un engagement qu'on ne peut pas remonter à sa phrase est un engagement dont
+   personne ne peut discuter. Les clauses de paiement, de responsabilité et de
+   droit applicable sont ignorées : ce sont de vraies obligations, mais pas
+   des obligations qu'un livrable peut tenir ou rompre.
+2. Entre les deux : **présélection locale des phrases** du livrable par
+   recouvrement de vocabulaire. Envoyer le livrable entier avec chaque
+   engagement serait l'implémentation évidente et la coûteuse. Le repêchage
+   garde les premières phrases du document, où le périmètre est souvent
+   redit, pour qu'un engagement au vocabulaire absent soit quand même jugé sur
+   quelque chose.
+3. Vérifier chaque engagement : `met` / `partial` / `missing` / `contradicted`,
+   avec les **identifiants de phrases** qui portent le verdict — un id
+   cliquable vaut mieux qu'une paraphrase à retrouver.
+
+**Le verdict global n'est pas une moyenne.** Un seul engagement contredit, ou
+un engagement critique manquant, donne `breach` quel que soit le score. Un
+livrable qui traite un sujet explicitement exclu n'est pas « un peu moins
+conforme » qu'un livrable un peu mince : c'est un autre problème, et le noyer
+dans une moyenne serait l'échec complet de cette fonctionnalité. Un paquet
+d'engagements dont la vérification échoue reste `unchecked` — jamais tenu.
+
+**Limite assumée.** La présélection est un recouvrement de termes, pas une
+recherche sémantique : un engagement formulé dans un vocabulaire entièrement
+différent de celui du livrable peut être déclaré `missing` à tort. Le prompt
+demande explicitement au modèle de baisser sa confiance dans ce cas, et le
+banc devra le mesurer sur de vrais couples SoW / livrable avant qu'on promette
+quoi que ce soit sur ce point.
+
 ### Le banc, et ce qu'il reste à mesurer
 
 ```

@@ -9,13 +9,19 @@
 import { decodeEvent, splitFrames } from '../../lib/sse.js';
 
 /**
- * @param {object}   request  body sent to /api/analyze
- * @param {object}   handlers { onPlan, onFinding, onDone, onError }
+ * @param {object}   request  body sent to the endpoint
+ * @param {object}   handlers { onPlan, onFinding, onVerdict, onDone, onError }
  * @param {AbortSignal} [signal]
+ * @param {string}   [endpoint] the review stream to consume
  * @returns {Promise<{findings:number, usage:object}>}
  */
-export const streamReview = async (request, handlers = {}, signal) => {
-  const response = await fetch('/api/analyze', {
+export const streamReview = async (
+  request,
+  handlers = {},
+  signal,
+  endpoint = '/api/analyze'
+) => {
+  const response = await fetch(endpoint, {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
     body: JSON.stringify(request),

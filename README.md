@@ -136,6 +136,20 @@ To call Ollama directly instead of through the proxy, set the endpoint to
 `http://localhost:11434` in the settings dialog and start the server with
 `OLLAMA_ORIGINS=* ollama serve`.
 
+## Checking a deliverable against its statement of work
+
+Drop the signed SoW in the panel below the analysis settings and hit **Check**.
+The review reads the contract, lists what it commits the firm to — deliverables,
+scope, exclusions, constraints, formats, dates — then checks each commitment
+against the deliverable and reports it as honoured, partial, missing or
+contradicted, citing the sentences that decide it.
+
+The verdict at the top is not an average: one contradicted commitment, or one
+missing commitment marked critical, reads *do not send as is* however green the
+rest is. A deliverable covering a subject the SoW explicitly excluded is a
+different problem from a thin one, and averaging them away would defeat the
+point.
+
 ## Measuring the review
 
 ```bash

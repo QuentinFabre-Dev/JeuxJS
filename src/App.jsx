@@ -9,6 +9,7 @@ import FindingsList from './components/FindingsList.jsx';
 import FindingsFilter from './components/FindingsFilter.jsx';
 import DocumentScore from './components/DocumentScore.jsx';
 import ReviewCost from './components/ReviewCost.jsx';
+import SowCheck from './components/SowCheck.jsx';
 import PriorityDistribution from './components/PriorityDistribution.jsx';
 import SkillCounts from './components/SkillCounts.jsx';
 import DocumentPreview from './components/DocumentPreview.jsx';
@@ -614,6 +615,15 @@ export default function App() {
                   criticPolicy={criticPolicy}
                   onCriticPolicyChange={setCriticPolicy}
                 />
+
+                {/* A separate question from quality, so a separate panel: does
+                    this deliverable honour what was signed? */}
+                {documentModel && (
+                  <SowCheck
+                    documentModel={documentModel}
+                    language={effectiveLanguage}
+                  />
+                )}
 
                 <button
                   type="button"
