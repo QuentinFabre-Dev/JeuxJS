@@ -32,6 +32,35 @@ all. The plan for the cloud review pipeline is in
 The badge in the header shows the connection state. Green (`Local model`) means
 you can upload a document and hit **Analyse**.
 
+## Keeping the API key from being abused
+
+The key lives in the server process and never reaches the browser — but a site
+open to the internet is a site anyone can spend your money on. Three layers,
+strongest last:
+
+1. **A shared password.** Set `SITE_PASSWORD` and the whole site sits behind a
+   login: an HMAC-signed cookie, checked by the proxy *and* independently by
+   every API route, because a serverless function can be called directly and a
+   route that trusts an upstream hop it cannot see is not protected. Leave the
+   variable unset in local development and there is no login at all.
+2. **Spending guard rails.** `MAX_PAGES` and `MAX_CALLS_PER_REVIEW` refuse an
+   oversized review *before any call goes out* — nothing works around them.
+   `REVIEWS_PER_HOUR` throttles one visitor, but only as best effort: it counts
+   in the memory of a single serverless instance and resets on a cold start.
+   It slows a mistake down; it does not stop someone determined.
+3. **A spend limit on the OpenAI account.** This is the only layer that holds
+   whatever happens in the app — a leaked password, a loop in a browser tab, a
+   bug of mine. Set it; the two layers above are convenience next to it.
+
+A shared password is right for a handful of colleagues. It has no per-person
+revocation and no idea who ran what: if you need to know who spent what, or to
+cut one person off without changing everybody's password, that calls for real
+accounts and a database, which this app does not have.
+
+Vercel also sells Password Protection and Vercel Authentication at the platform
+level (Project Settings → Deployment Protection). They need no code, and they
+stack with the above.
+
 ## Deploying on Vercel
 
 The app is a Next.js application with server routes: it needs the Next.js

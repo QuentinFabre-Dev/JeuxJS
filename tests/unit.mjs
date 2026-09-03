@@ -28,6 +28,7 @@ import { checksForSkills } from '../lib/checks/registry.js';
 import { runLocalChecks, splitRequirements } from '../lib/checks/local/index.js';
 import { PACKS, packFor, GENERIC_PACK } from '../lib/checks/domains/index.js';
 import { scoreFindings } from '../bench/score.js';
+import { rateLimit, refuseOversized, resetRateLimits } from '../lib/limits.js';
 import {
   batchCommitments,
   relevantSentences,
@@ -783,6 +784,38 @@ eq(
     ).includes('do not send')
   );
   eq('un SoW sans engagement le dit', rollupLabel(rollup([], [])), 'No commitment found in the statement of work.');
+}
+
+// ── garde-fous de dépense ───────────────────────────────────
+{
+  const config = { maxPages: 80, maxCalls: 200, reviewsPerHour: 3 };
+
+  eq('une revue normale passe', refuseOversized({ pageCount: 10, callCount: 31 }, config), null);
+  ok(
+    'un document démesuré est refusé avant le moindre appel',
+    refuseOversized({ pageCount: 400, callCount: 10 }, config)?.includes('400 pages')
+  );
+  ok(
+    'une sélection qui exploserait le nombre d’appels aussi',
+    refuseOversized({ pageCount: 10, callCount: 900 }, config)?.includes('900 appels')
+  );
+
+  resetRateLimits();
+  const now = Date.now();
+  eq(
+    'les premières revues de l’heure passent',
+    [0, 1, 2].map((i) => rateLimit('alice', config, now + i).allowed),
+    [true, true, true]
+  );
+  const blocked = rateLimit('alice', config, now + 3);
+  ok('la suivante est refusée', !blocked.allowed);
+  ok('et dit quand réessayer', /min/.test(blocked.reason));
+  ok('un autre visiteur n’est pas pénalisé', rateLimit('bob', config, now + 3).allowed);
+  ok(
+    'la fenêtre glisse : une heure plus tard, on repart',
+    rateLimit('alice', config, now + 60 * 60 * 1000 + 1).allowed
+  );
+  resetRateLimits();
 }
 
 // ── session ─────────────────────────────────────────────────

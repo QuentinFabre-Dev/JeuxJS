@@ -17,6 +17,7 @@ import { batchCommitments, rollup } from '../../../lib/checks/sow.js';
 import { extractCommitments, verifyCommitments } from '../../../lib/checks/runner.js';
 import { documentSentences } from '../../../lib/checks/sentences.js';
 import { requireSession, unauthorised } from '../../../lib/session.js';
+import { rateLimit, refuseOversized, visitorKey } from '../../../lib/limits.js';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -33,6 +34,15 @@ export async function POST(request) {
   if (!body?.documentModel?.pages || !body?.sowModel?.pages) {
     return Response.json({ error: 'Livrable et SoW requis.' }, { status: 400 });
   }
+
+  const oversized = refuseOversized({
+    pageCount: body.documentModel.pages.length + body.sowModel.pages.length,
+    callCount: 0,
+  });
+  if (oversized) return Response.json({ error: oversized }, { status: 413 });
+
+  const quota = rateLimit(visitorKey(request));
+  if (!quota.allowed) return Response.json({ error: quota.reason }, { status: 429 });
 
   return eventStream(
     check({

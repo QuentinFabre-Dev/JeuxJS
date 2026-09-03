@@ -24,6 +24,7 @@ import {
 import { documentSentences } from '../../../lib/checks/sentences.js';
 import { packFor } from '../../../lib/checks/domains/index.js';
 import { requireSession, unauthorised } from '../../../lib/session.js';
+import { rateLimit, refuseOversized, visitorKey } from '../../../lib/limits.js';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -50,6 +51,17 @@ export async function POST(request) {
     pageCount: documentModel.pages.length,
     pagesPerBatch,
   }).filter((task) => task.engine === 'llm');
+
+  // Refused before a single call goes out: a review that would cost too much
+  // must not cost anything at all.
+  const oversized = refuseOversized({
+    pageCount: documentModel.pages.length,
+    callCount: tasks.length,
+  });
+  if (oversized) return Response.json({ error: oversized }, { status: 413 });
+
+  const quota = rateLimit(visitorKey(request));
+  if (!quota.allowed) return Response.json({ error: quota.reason }, { status: 429 });
 
   return eventStream(
     review(tasks, {
