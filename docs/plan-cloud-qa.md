@@ -6,7 +6,7 @@
 | --- | --- |
 | Jugement rédactionnel | **Claude Opus 5** (`claude-opus-5`), 5 $ / 25 $ par million de jetons |
 | Orthographe et grammaire | **Claude Haiku 4.5** (`claude-haiku-4-5`), 1 $ / 5 $ par million |
-| Terminologie, chiffres, exigences à motif | **JavaScript**, dans un worker du navigateur |
+| Terminologie, chiffres, exigences à motif | **JavaScript**, dans le navigateur |
 | Découpage | **Un lot = une page**, pour maximiser le parallélisme |
 | Cadre applicatif | **Next.js**, déployé sur Vercel |
 | Framework d'orchestration | **Aucun** — SDK Anthropic officiel, ni LangChain ni LangGraph |
@@ -50,14 +50,17 @@ n'en sont pas là :
 | --- | --- | --- |
 | Terminologie, acronymes | Le terme est‑il celui du glossaire ? l'acronyme est‑il défini avant usage ? | **JS, navigateur** |
 | Chiffres, unités, devises, dates | Deux occurrences du même montant divergent‑elles ? | **JS, navigateur** |
-| Exigences client « mécaniques » (« aucun nom de client hors page de garde ») | Une recherche de motif | **JS, navigateur** |
+| Exigences client « mécaniques » (« aucun nom de client hors page de garde : "Acme Corp" ») | Une recherche de motif | **JS, navigateur** |
 | Orthographe, grammaire, accords | Une relecture attentive, sans finesse rédactionnelle | **Haiku 4.5** |
 | Clarté, ton | Jugement rédactionnel | **Opus 5** |
 | Cohérence inter‑pages | Contradictions, dérive terminologique | **Opus 5**, portée document |
 | Exigences client sémantiques (« les conclusions avant leur justification ») | Jugement | **Opus 5** |
 
 Les trois premiers restent **gratuits et instantanés**, sans infrastructure :
-c'est du JavaScript dans un Web Worker. La distinction qui compte n'est donc pas
+c'est du JavaScript sur le fil principal — mesuré à 30 ms pour un document de
+200 pages, un worker n'apporterait qu'une étape de bundling et un protocole de
+messages. Le banc du lot F garde ce chiffre honnête ; le jour où ce ne sont plus
+des millisecondes, le worker est à un fichier de distance. La distinction qui compte n'est donc pas
 « local contre cloud », c'est **quel contrôle mérite quel moteur** — et sur les
 sept, trois n'ont besoin d'aucun modèle et un seul n'a pas besoin d'Opus.
 
@@ -183,7 +186,7 @@ lib/
     runner.js                 exécution d'une tâche, back-off, usage
     merge.js                  dédoublonnage phrase × critère
     local/
-      terminology.js  figures.js  patterns.js
+      terminology.js  figures.js  patterns.js  index.js         ✔ lot B
     llm/
       mechanical.md  clarity-tone.md  consistency.md  requirements.md  critic.md
 src/
@@ -194,7 +197,7 @@ src/
 Répartition d'exécution :
 
 - **Navigateur** — extraction (`documentParser.js`, `mammoth`, `pdfjs`, OCR) et
-  les contrôles déterministes en JS, dans un Web Worker.
+  les contrôles déterministes en JS.
 - **Serveur** — les appels aux modèles, et eux seuls.
 
 L'interface marque chaque contrôle par son moteur : instantané et gratuit, ou
@@ -234,13 +237,40 @@ triage, score, structure de l'export Excel.
 | --- | --- | --- |
 | **0** ✔ | Migration Next.js, `/api/analyze` en SSE, authentification, fan‑out borné, planificateur | *fait* |
 | **A** ✔ | Registre des sept contrôles, planificateur branché sur le sélecteur de skills, estimation durée + coût affichée avant lancement, client du flux SSE. Le branchement de la progression dans `App.jsx` part au lot C : il n'y a rien à streamer tant qu'aucun contrôle n'a de moteur | *fait* |
-| **B** | Contrôles déterministes en JS dans un worker : terminologie et acronymes, chiffres et unités, exigences à motif. **Gratuits et instantanés** | ~1,5 j |
+| **B** ✔ | Contrôles déterministes en JS : acronyme employé avant sa définition, variantes d'un terme du glossaire, deux écritures d'un même montant, formats de date mélangés, terme interdit trouvé. **Gratuits et instantanés** (30 ms sur 200 pages) | *fait* |
 | **C** | Contrôles modèles en `.md` (mécanique en Haiku, clarté + ton, cohérence, exigences en Opus), SDK Anthropic, sorties structurées, effort `low`, comptabilisation de l'`usage`, bascule de `App.jsx` sur le flux | ~2,5 j |
 | **D** | Critique pipeliné, provenance, colonnes Excel | ~1,5 j |
 | **E** | Packs métier : glossaires, motifs, contrôles propres au métier | ~1 j |
 | **F** | Banc d'évaluation : latence, précision, rappel et coût **mesurés** par sélection ; comparaison Haiku / Opus sur la passe mécanique ; garde‑fous de budget | ~1,5 j |
 
-Reste ≈ **8 jours**.
+Reste ≈ **6,5 jours**.
+
+### Ce que « cohérence » veut dire, précisément
+
+C'est un *skill*, pas un contrôle : le mot dans lequel l'utilisateur pense. Le
+cocher en active trois, sur deux moteurs différents.
+
+| Contrôle | Question | Moteur | Pourquoi |
+| --- | --- | --- | --- |
+| `terminology` | « CVSS » employé page 3, défini page 7 | navigateur | Un **fait**, pas un jugement : un index des premières occurrences |
+| `figures` | « 4,2 M€ » page 2, « 4.2M€ » page 8 | navigateur | Extraire, normaliser, comparer. Aucune interprétation |
+| `consistency` | Page 2 dit la migration terminée, page 9 la dit en cours | **Opus 5** | Aucune règle ne repère ça : il faut comprendre les deux phrases |
+
+Le navigateur ne fait pas « la cohérence ». Il fait la partie où la contradiction
+est visible dans les caractères ; le modèle garde celle où elle est dans le sens.
+
+Sur les chiffres, une limite assumée : savoir que deux nombres *devraient* être
+égaux n'est pas toujours mécanique. Le contrôle local ne signale que les cas
+francs — écritures divergentes d'un même montant, libellés identiques portant
+des valeurs différentes. Les cas douteux ne sont pas inventés en local, ils
+partent au modèle. Un contrôle déterministe qui bluffe est pire qu'un contrôle
+absent.
+
+Même principe sur les exigences client : une exigence **entre guillemets** est
+une recherche (« pas de "Acme Corp" » — gratuite, instantanée), une exigence
+sans guillemets demande un jugement et part au modèle. La convention est
+explicite plutôt que devinée, et elle coûte à l'utilisateur une paire de
+guillemets pour rendre gratuit un contrôle payant.
 
 ## Vérification
 

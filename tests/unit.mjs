@@ -25,6 +25,7 @@ import { runPool } from '../lib/checks/pool.js';
 import { planTasks, taskCountByEngine } from '../lib/checks/planner.js';
 import { estimateReview, formatCost, formatDuration } from '../lib/checks/estimate.js';
 import { checksForSkills } from '../lib/checks/registry.js';
+import { runLocalChecks, splitRequirements } from '../lib/checks/local/index.js';
 import { issueSession, verifySession, authDisabled } from '../lib/auth.js';
 
 let failures = 0;
@@ -368,6 +369,68 @@ eq(
   eq('une sélection vide ne retient aucun contrôle', checksForSkills([]).length, 0);
   eq('la durée se lit en une phrase', [formatDuration(0.4), formatDuration(20), formatDuration(200)], ['< 1 s', '≈ 20 s', '≈ 3 min']);
   eq('le coût aussi', [formatCost(0), formatCost(0.004), formatCost(0.42)], ['free', '< $0.01', '≈ $0.42']);
+}
+
+// ── contrôles déterministes ─────────────────────────────────
+{
+  const s = (id, page, text) => ({ id, page, text });
+  const doc = [
+    s('p1s1', 1, "Le rapport Acme Corp couvre l'exercice."),
+    s('p2s1', 2, 'Le score CVSS retenu est de 7,5.'),
+    s('p2s2', 2, "Le chiffre d'affaires atteint 4,2 M€ sur la période."),
+    s('p3s1', 3, "Livré le 12/03/2025 par l'équipe, au format PDF."),
+    s('p7s1', 7, 'Le Common Vulnerability Scoring System (CVSS) sert de référence.'),
+    s('p8s1', 8, "Le chiffre d'affaires atteint 4.2M€ selon l'annexe."),
+    s('p9s1', 9, 'Validé le 3 avril 2025 en comité.'),
+    s('p9s2', 9, 'Une remarque sur Acme Corp figure ici.'),
+    s('p9s3', 9, 'Nous employons la cybersécurité comme cadre.'),
+  ];
+  const run = (ids, context) => runLocalChecks(ids, doc, context);
+  const explains = (found, fragment) =>
+    found.some((candidate) => candidate.explanation.includes(fragment));
+
+  const terms = run(['terminology'], { glossary: ['Cyber Sécurité'] });
+  ok('un acronyme défini après son premier emploi est signalé', explains(terms, 'CVSS'));
+  eq(
+    'il est signalé à sa première occurrence, pas à sa définition',
+    terms.find((candidate) => candidate.explanation.includes('CVSS')).id,
+    'p2s1'
+  );
+  ok('un acronyme que personne n’explicite jamais n’est pas signalé', !explains(terms, 'SOC'));
+  ok('un acronyme universel non plus', !explains(terms, 'PDF'));
+  ok('une variante d’un terme du glossaire est signalée', explains(terms, 'Cyber Sécurité'));
+
+  const figures = run(['figures']);
+  ok('deux écritures du même montant sont signalées', explains(figures, '4.2M€'));
+  ok('deux formats de date aussi', explains(figures, 'formats de date'));
+  eq(
+    'le document de référence, lui, ne déclenche rien',
+    runLocalChecks(['terminology', 'figures'], [s('p1s1', 1, 'Une phrase parfaitement neutre.')]).length,
+    0
+  );
+
+  const patterns = run(['patterns'], {
+    requirements: ['aucun nom de client hors page de garde : "Acme Corp"'],
+  });
+  eq('un terme cité est cherché, la page de garde exemptée', patterns.map((c) => c.id), ['p9s2']);
+  eq('une exigence sans guillemets n’est pas traitée en local', run(['patterns'], { requirements: ['les conclusions avant leur justification'] }).length, 0);
+  eq(
+    'et elle part au modèle',
+    splitRequirements(['pas de "Acme"', 'conclusions avant justification']),
+    { pattern: ['pas de "Acme"'], semantic: ['conclusions avant justification'] }
+  );
+
+  // Le choix de ne pas utiliser de worker repose sur cette mesure.
+  const big = [];
+  for (let page = 1; page <= 200; page += 1) {
+    for (let i = 1; i <= 12; i += 1) {
+      big.push(s(`p${page}s${i}`, page, `La ligne ${i} vaut ${page * 100},5 M€ selon le SOC du 0${(i % 9) + 1}/03/2025.`));
+    }
+  }
+  const started = performance.now();
+  runLocalChecks(['terminology', 'figures', 'patterns'], big, { requirements: ['pas de "Acme"'] });
+  const elapsed = performance.now() - started;
+  ok(`200 pages passent sous 250 ms (${elapsed.toFixed(0)} ms)`, elapsed < 250);
 }
 
 // ── session ─────────────────────────────────────────────────
