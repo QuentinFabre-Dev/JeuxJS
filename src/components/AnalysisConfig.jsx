@@ -5,6 +5,7 @@ import { DOC_TYPES, SERVICE_LINES, SKILLS } from '../data/constants.js';
 import { LANGUAGES, languageLabel } from '../services/languageDetect.js';
 import SkillChip from './SkillChip.jsx';
 import CustomCheckChip from './CustomCheckChip.jsx';
+import ReviewEstimate from './ReviewEstimate.jsx';
 
 export default function AnalysisConfig({
   selectedSkills,
@@ -23,6 +24,7 @@ export default function AnalysisConfig({
   onApplyPlaybook,
   onSavePlaybook,
   onDeletePlaybook,
+  pageCount,
 }) {
   const [draft, setDraft] = useState('');
   const [playbookName, setPlaybookName] = useState('');
@@ -100,6 +102,15 @@ export default function AnalysisConfig({
           Hover a type to see its description. Custom checks run on the
           same document.
         </p>
+
+        {/* What this selection costs, next to the switch that changes it. */}
+        <div className="mt-3">
+          <ReviewEstimate
+            skills={selectedSkills}
+            customChecks={customChecks}
+            pageCount={pageCount}
+          />
+        </div>
       </section>
 
       {/* Playbooks */}

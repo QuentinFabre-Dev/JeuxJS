@@ -177,14 +177,18 @@ lib/
   checks/
     pool.js                   fan-out borné                                 ✔ lot 0
     planner.js                skills sélectionnés + document → tâches       ✔ lot 0
-    registry.js               les contrôles, leur moteur, leur skill
+    registry.js               les sept contrôles, leur moteur, leur skill    ✔ lot A
+    pricing.js                paliers de modèle, prix, débit                 ✔ lot A
+    estimate.js               durée et coût d'une sélection, avant lancement ✔ lot A
     runner.js                 exécution d'une tâche, back-off, usage
     merge.js                  dédoublonnage phrase × critère
     local/
       terminology.js  figures.js  patterns.js
     llm/
       mechanical.md  clarity-tone.md  consistency.md  requirements.md  critic.md
-src/                          composants React actuels
+src/
+  services/reviewStream.js    consommation du flux côté navigateur           ✔ lot A
+  components/ReviewEstimate.jsx  l'estimation, sous le sélecteur de skills   ✔ lot A
 ```
 
 Répartition d'exécution :
@@ -229,14 +233,14 @@ triage, score, structure de l'export Excel.
 | Lot | Contenu | Effort |
 | --- | --- | --- |
 | **0** ✔ | Migration Next.js, `/api/analyze` en SSE, authentification, fan‑out borné, planificateur | *fait* |
-| **A** | Registre de contrôles, branchement du sélecteur de skills, streaming vers l'interface, estimation durée + coût avant lancement | ~2 j |
+| **A** ✔ | Registre des sept contrôles, planificateur branché sur le sélecteur de skills, estimation durée + coût affichée avant lancement, client du flux SSE. Le branchement de la progression dans `App.jsx` part au lot C : il n'y a rien à streamer tant qu'aucun contrôle n'a de moteur | *fait* |
 | **B** | Contrôles déterministes en JS dans un worker : terminologie et acronymes, chiffres et unités, exigences à motif. **Gratuits et instantanés** | ~1,5 j |
-| **C** | Contrôles modèles en `.md` (mécanique en Haiku, clarté + ton, cohérence, exigences en Opus), SDK Anthropic, sorties structurées, effort `low`, comptabilisation de l'`usage` | ~2 j |
+| **C** | Contrôles modèles en `.md` (mécanique en Haiku, clarté + ton, cohérence, exigences en Opus), SDK Anthropic, sorties structurées, effort `low`, comptabilisation de l'`usage`, bascule de `App.jsx` sur le flux | ~2,5 j |
 | **D** | Critique pipeliné, provenance, colonnes Excel | ~1,5 j |
 | **E** | Packs métier : glossaires, motifs, contrôles propres au métier | ~1 j |
 | **F** | Banc d'évaluation : latence, précision, rappel et coût **mesurés** par sélection ; comparaison Haiku / Opus sur la passe mécanique ; garde‑fous de budget | ~1,5 j |
 
-Reste ≈ **9,5 jours**.
+Reste ≈ **8 jours**.
 
 ## Vérification
 

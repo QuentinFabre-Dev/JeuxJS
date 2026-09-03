@@ -554,6 +554,7 @@ export default function App() {
                   onApplyPlaybook={applyPlaybook}
                   onSavePlaybook={handleSavePlaybook}
                   onDeletePlaybook={handleDeletePlaybook}
+                  pageCount={documentModel?.pages?.length ?? 0}
                 />
 
                 <button

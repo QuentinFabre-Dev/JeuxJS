@@ -20,9 +20,11 @@ import { REVIEW_STATES, toggleState, stateOf } from '../src/data/review.js';
 import { buildMessages } from '../src/services/ollamaClient.js';
 import { parseSseChunk } from '../src/services/deepseekClient.js';
 import { activeModel, activeBaseUrl, isCloudProvider } from '../src/config/providers.js';
-import { encodeEvent, decodeEvent } from '../lib/sse.js';
+import { encodeEvent, decodeEvent, splitFrames } from '../lib/sse.js';
 import { runPool } from '../lib/checks/pool.js';
 import { planTasks, taskCountByEngine } from '../lib/checks/planner.js';
+import { estimateReview, formatCost, formatDuration } from '../lib/checks/estimate.js';
+import { checksForSkills } from '../lib/checks/registry.js';
 import { issueSession, verifySession, authDisabled } from '../lib/auth.js';
 
 let failures = 0;
@@ -314,6 +316,58 @@ eq(
     taskCountByEngine(plan(['spelling', 'clarity', 'consistency'], 10)),
     { languagetool: 1, llm: 11 }
   );
+}
+
+// ── découpage du flux ───────────────────────────────────────
+{
+  const stream = `${encodeEvent('plan', { tasks: [] })}${encodeEvent('finding', { task: 'a' })}`;
+  const cut = 30;
+  const first = splitFrames(stream.slice(0, cut));
+  const second = splitFrames(first.rest + stream.slice(cut));
+  eq(
+    'une trame coupée par une frontière de chunk n’est pas perdue',
+    [...first.frames, ...second.frames].map((frame) => decodeEvent(frame).event),
+    ['plan', 'finding']
+  );
+  eq('le fragment incomplet est rendu au flux', splitFrames('event: x\ndata:').frames, []);
+}
+
+// ── estimation avant lancement ──────────────────────────────
+{
+  const estimateFor = (skills) => estimateReview(planTasks({ skills, pageCount: 10 }));
+  const cents = (skills) => Math.round(estimateFor(skills).dollars * 100);
+
+  eq('rien de sélectionné, rien à payer', cents([]), 0);
+  eq('orthographe + grammaire : 3 centimes sur 10 pages', cents(['spelling', 'grammar']), 3);
+  eq('clarté + ton : 18 centimes', cents(['clarity', 'tone']), 18);
+  eq(
+    'revue complète : 42 centimes',
+    cents(['spelling', 'grammar', 'clarity', 'tone', 'consistency', 'custom']),
+    42
+  );
+  ok(
+    'la passe mécanique est cinq fois moins chère que le jugement rédactionnel',
+    cents(['clarity', 'tone']) / cents(['spelling', 'grammar']) > 4
+  );
+  ok(
+    'la revue complète tient sous 25 secondes',
+    estimateFor(['spelling', 'grammar', 'clarity', 'tone', 'consistency', 'custom']).seconds < 25
+  );
+  eq(
+    'les contrôles déterministes ne coûtent rien et ne rallongent rien',
+    (() => {
+      const local = estimateReview(
+        planTasks({ skills: ['consistency'], pageCount: 10 }).filter((task) =>
+          ['terminology', 'figures'].includes(task.check)
+        )
+      );
+      return [local.dollars, local.calls, local.free];
+    })(),
+    [0, 0, 2]
+  );
+  eq('une sélection vide ne retient aucun contrôle', checksForSkills([]).length, 0);
+  eq('la durée se lit en une phrase', [formatDuration(0.4), formatDuration(20), formatDuration(200)], ['< 1 s', '≈ 20 s', '≈ 3 min']);
+  eq('le coût aussi', [formatCost(0), formatCost(0.004), formatCost(0.42)], ['free', '< $0.01', '≈ $0.42']);
 }
 
 // ── session ─────────────────────────────────────────────────
