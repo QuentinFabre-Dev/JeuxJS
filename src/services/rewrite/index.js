@@ -11,6 +11,7 @@
  */
 import { REVIEW_STATES, stateOf } from '../../data/review.js';
 import { mergeCorrections } from './merge.js';
+import { rewriteDocx } from './docx.js';
 import { rewriteText } from './text.js';
 
 const REVIEWED = '_RyderReviewed';
@@ -22,8 +23,14 @@ export const reviewedName = (name) => {
   return `${name.slice(0, dot)}${REVIEWED}${name.slice(dot)}`;
 };
 
-/** Formats this can rewrite. PDF positions text character by character. */
-export const REWRITABLE = ['text', 'docx', 'pptx'];
+/** Formats this can rewrite today. PowerPoint arrives in the next batch. */
+export const REWRITABLE = ['text', 'docx'];
+
+/** Why a format is refused, in the words the reader needs. */
+export const REFUSAL = {
+  pdf: 'A PDF positions its text character by character: correcting a word would shift everything after it on the line. Not supported.',
+  pptx: 'PowerPoint decks are coming in the next batch.',
+};
 
 export const canRewrite = (documentModel) => REWRITABLE.includes(documentModel?.kind);
 
@@ -69,6 +76,24 @@ export const plannedEdits = (findings, states) => {
   return { edits, conflicts };
 };
 
+/** Dispatches to the writer that knows this format. */
+const applyToFile = async ({ file, documentModel, edits }) => {
+  if (documentModel.kind === 'docx') {
+    const bytes = documentModel.source?.bytes ?? (await file.arrayBuffer());
+    return rewriteDocx(bytes, edits);
+  }
+
+  if (documentModel.kind === 'pptx') {
+    // PowerPoint arrives in the next batch. Refusing loudly beats handing back
+    // a deck that quietly kept its mistakes.
+    throw new Error('La régénération des fichiers PPTX arrive au prochain lot.');
+  }
+
+  const raw = await file.text();
+  const { content, applied, notFound } = rewriteText(raw, edits);
+  return { blob: new Blob([content], { type: file.type || 'text/plain' }), applied, notFound };
+};
+
 /**
  * @returns {{blob: Blob, filename: string, report: object}}
  */
@@ -82,26 +107,18 @@ export const rewriteDocument = async ({ file, documentModel, findings, states })
     throw new Error("Aucune correction acceptée : il n'y a rien à appliquer.");
   }
 
-  if (documentModel.kind !== 'text') {
-    // DOCX and PPTX arrive in the next batches; refusing loudly beats
-    // returning a file that quietly kept its mistakes.
-    throw new Error(
-      `La régénération des fichiers ${documentModel.kind.toUpperCase()} arrive au prochain lot.`
-    );
-  }
-
-  const raw = await file.text();
-  const { content, applied, notFound } = rewriteText(raw, edits);
+  const result = await applyToFile({ file, documentModel, edits });
 
   return {
-    blob: new Blob([content], { type: file.type || 'text/plain' }),
+    blob: result.blob,
     filename: reviewedName(file.name),
     report: {
-      applied: applied.length,
+      applied: result.applied.length,
       sentences: edits.length,
       // Never silent: a document presented as corrected that is only
       // three-quarters corrected is worse than one nobody touched.
-      notFound,
+      notFound: result.notFound,
+      skipped: result.skipped ?? [],
       conflicts,
     },
   };

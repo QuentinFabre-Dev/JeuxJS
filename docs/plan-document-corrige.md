@@ -173,7 +173,7 @@ n'existe.
 | Lot | Contenu | Effort |
 | --- | --- | --- |
 | **1** ✔ | Octets d'origine conservés (DOCX, PPTX) ; `span.js`, `merge.js`, `locate.js`, `text.js` avec leurs tests ; TXT/MD de bout en bout ; bouton, compteur, rapport | *fait* |
-| **2** | **DOCX** : carte d'offsets des runs, application, parties annexes (en-têtes, pieds de page, notes), chaînage multi-corrections | ~2,5 j |
+| **2** ✔ | **DOCX** : carte d'offsets des runs, application, parties annexes (en-têtes, pieds de page, notes), chaînage multi-corrections, aller-retour testé | *fait* |
 | **3** | **PPTX** : nœuds `<a:t>`, détection de débordement, avertissement | ~1,5 j |
 | **4** | Banc de non-régression : corpus de vrais documents, chaque fichier produit rouvert et comparé | ~1 j |
 | **5** | *(optionnel)* Suivi des modifications Word en case à cocher | ~2 j |
@@ -217,6 +217,29 @@ n'arrivaient donc jamais à l'écran**, et personne ne l'avait vu : les contrôl
 désormais comme findings *consultatifs* — affichés, triables, sans bloc de
 remplacement, et sans effet sur le document régénéré. Les accepter vaut
 « noté », pas « réécris ».
+
+## Ce que le lot 2 a appris
+
+**La mécanique tient sur un vrai fichier.** L'aller-retour est désormais un
+test du dépôt : on fabrique un `.docx` reproduisant ce qui casse en vrai — une
+phrase éclatée sur plusieurs runs, du gras au milieu du mot corrigé, un style
+de titre, du texte en en-tête —, on corrige, on rouvre avec `mammoth` et on
+vérifie quatorze choses. Gras, italique, style de titre, feuille de styles et
+parties de l'archive survivent tous ; la phrase que personne n'a corrigée est
+identique au caractère près.
+
+**Un bug d'un caractère, et ce qu'il enseigne.** La deuxième correction
+ressortait en `« Les testsonta été »`. Appliquer une correction déplace tous
+les offsets qui la suivent : je reconstruisais la carte des segments après
+chaque application, mais pas le texte auquel ces offsets se rapportent. Un
+caractère de décalage suffit à écrire une absurdité. La carte **et** le texte
+sont maintenant relus ensemble, et un test le verrouille en interdisant
+explicitement `testsonta`.
+
+**Une correction ne peut pas traverser une fin de paragraphe.** Une marque de
+paragraphe est de la structure, pas des caractères : aucune modification d'un
+nœud de texte ne l'exprime. Ces corrections sont écartées et **nommées dans le
+rapport** plutôt qu'approximées.
 
 ## Décisions à acter
 

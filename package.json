@@ -7,7 +7,7 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "test": "node tests/unit.mjs",
+    "test": "node tests/unit.mjs && node tests/rewrite-docx.mjs",
     "sync:assets": "node scripts/sync-assets.mjs",
     "bench": "node scripts/bench.mjs"
   },

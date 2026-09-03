@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { AlertTriangle, Download, FileCheck2, Loader2 } from 'lucide-react';
 
-import { canRewrite, plannedEdits, rewriteDocument } from '../services/rewrite/index.js';
+import { REFUSAL, canRewrite, plannedEdits, rewriteDocument } from '../services/rewrite/index.js';
 import { REVIEW_STATES, stateOf } from '../data/review.js';
 
 /**
@@ -82,8 +82,8 @@ export default function RewriteButton({ file, documentModel, findings, states })
 
       {!supported && (
         <p className="mt-2 text-[11px] text-amber-700">
-          A PDF positions its text character by character: correcting a word
-          would shift everything after it on the line. Not supported.
+          {REFUSAL[documentModel.kind] ??
+            `The ${documentModel.kind} format cannot be regenerated.`}
         </p>
       )}
 
@@ -113,6 +113,14 @@ export default function RewriteButton({ file, documentModel, findings, states })
             {report.applied} correction{report.applied > 1 ? 's' : ''} applied
             across {report.sentences} sentence{report.sentences > 1 ? 's' : ''}.
           </p>
+          {report.skipped?.length > 0 && (
+            <p className="mt-1.5 text-amber-700">
+              {report.skipped.length} correction
+              {report.skipped.length > 1 ? 's span' : ' spans'} a paragraph
+              break, which no text edit can express. Left out:{' '}
+              {report.skipped.map((entry) => entry.sentenceId).join(', ')}.
+            </p>
+          )}
           {report.notFound?.length > 0 && (
             <p className="mt-1.5 text-amber-700">
               {report.notFound.length} could not be placed in the file and{' '}
