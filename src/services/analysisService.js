@@ -249,10 +249,19 @@ export const normaliseFinding = (raw, { sentenceIndex, skills, customChecks }) =
   if (!raw || typeof raw !== 'object') return null;
 
   const sentence = sentenceIndex.get(String(raw.id ?? '').trim());
+  if (!sentence) return null;
+
   const suggestion = String(raw.suggestion ?? '').trim();
-  if (!sentence || !suggestion) return null;
-  // A "correction" identical to the original is noise.
-  if (suggestion === sentence.text) return null;
+  const explanation = String(raw.explanation ?? '').trim();
+
+  // Not every finding has a replacement to offer. "This acronym is defined two
+  // pages later" and "these two amounts disagree" point at something to look
+  // at, not at a word to swap — the right correction is a decision only the
+  // author can make. Such findings are *advisory*: they carry no suggestion,
+  // and dropping them for that reason, as this function used to, made three
+  // of the sample document's five findings invisible.
+  const advisory = !suggestion || suggestion === sentence.text;
+  if (advisory && !explanation) return null;
 
   const rawSkill = String(raw.skill ?? '').trim().toLowerCase();
   const customLabel = String(raw.custom_label ?? raw.customLabel ?? '').trim();
@@ -276,9 +285,8 @@ export const normaliseFinding = (raw, { sentenceIndex, skills, customChecks }) =
     ...(raw.verified !== undefined && { verified: raw.verified === true }),
     original: sentence.text,
     ...(sentence.rects && { rects: sentence.rects }),
-    suggestion,
-    explanation:
-      String(raw.explanation ?? '').trim() || 'No explanation provided.',
+    ...(advisory ? { advisory: true } : { suggestion }),
+    explanation: explanation || 'No explanation provided.',
     priority: PRIORITIES.includes(priority) ? priority : 'medium',
     // A recognised page can misread characters: what looks like a typo may be
     // the OCR's, not the author's.

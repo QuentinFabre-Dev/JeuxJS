@@ -208,7 +208,8 @@ const readSlideOrder = async (zip) => {
 
 export const parsePptx = async (file) => {
   const { default: JSZip } = await import('jszip');
-  const zip = await JSZip.loadAsync(await file.arrayBuffer());
+  const bytes = await file.arrayBuffer();
+  const zip = await JSZip.loadAsync(bytes);
 
   const presentation = await readSlideOrder(zip);
   const slideFiles = Object.keys(zip.files)
@@ -323,6 +324,9 @@ export const parsePptx = async (file) => {
 
   return {
     pages,
-    source: { slides, width: SLIDE_WIDTH, height: slideHeight },
+    // The archive itself is kept: correcting a slide means editing its XML in
+    // place, and nothing rebuilt from the extracted text would keep the deck's
+    // layout.
+    source: { slides, width: SLIDE_WIDTH, height: slideHeight, bytes },
   };
 };

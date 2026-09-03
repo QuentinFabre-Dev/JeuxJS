@@ -9,6 +9,7 @@ import FindingsList from './components/FindingsList.jsx';
 import FindingsFilter from './components/FindingsFilter.jsx';
 import DocumentScore from './components/DocumentScore.jsx';
 import ReviewCost from './components/ReviewCost.jsx';
+import RewriteButton from './components/RewriteButton.jsx';
 import SowCheck from './components/SowCheck.jsx';
 import PriorityDistribution from './components/PriorityDistribution.jsx';
 import SkillCounts from './components/SkillCounts.jsx';
@@ -733,6 +734,16 @@ export default function App() {
                 </section>
 
                 <ReviewCost usage={usage} />
+
+                {/* The output of the triage: the document, corrected. */}
+                {!isAnalyzing && findings.length > 0 && (
+                  <RewriteButton
+                    file={file}
+                    documentModel={documentModel}
+                    findings={findings}
+                    states={reviewStates}
+                  />
+                )}
 
                 {/* Main row: findings + document preview */}
                 <section className="grid grid-cols-1 xl:grid-cols-12 gap-6">

@@ -29,6 +29,11 @@ import { runLocalChecks, splitRequirements } from '../lib/checks/local/index.js'
 import { PACKS, packFor, GENERIC_PACK } from '../lib/checks/domains/index.js';
 import { scoreFindings } from '../bench/score.js';
 import { rateLimit, refuseOversized, resetRateLimits } from '../lib/limits.js';
+import { applySpans, changedSpan, overlaps } from '../src/services/rewrite/span.js';
+import { mergeCorrections } from '../src/services/rewrite/merge.js';
+import { locate } from '../src/services/rewrite/locate.js';
+import { rewriteText } from '../src/services/rewrite/text.js';
+import { plannedEdits, reviewedName, canRewrite } from '../src/services/rewrite/index.js';
 import {
   batchCommitments,
   relevantSentences,
@@ -255,6 +260,50 @@ states = toggleState(states, 'x', REVIEW_STATES.ACCEPTED);
 eq('re-cliquer rouvre le finding', stateOf(states, 'x'), 'pending');
 states = toggleState(states, 'x', REVIEW_STATES.REJECTED);
 eq('rejeté', stateOf(states, 'x'), 'rejected');
+
+// ── findings sans correction ────────────────────────────────
+{
+  const index = new Map([['p1s1', { page: 1, text: 'Le budget est de 120 k€.' }]]);
+  const context = { sentenceIndex: index, skills: ['consistency'], customChecks: [] };
+
+  const advisory = normaliseFinding(
+    {
+      id: 'p1s1',
+      skill: 'consistency',
+      suggestion: 'Le budget est de 120 k€.',
+      explanation: 'Ce montant en contredit un autre.',
+      priority: 'high',
+      confidence: 0.9,
+    },
+    context
+  );
+  ok('un finding sans correction à proposer est conservé', advisory !== null);
+  ok('et marqué comme tel', advisory.advisory === true && advisory.suggestion === undefined);
+
+  eq(
+    'mais un finding sans correction ni explication reste du bruit',
+    normaliseFinding(
+      { id: 'p1s1', skill: 'consistency', suggestion: 'Le budget est de 120 k€.', explanation: '  ' },
+      context
+    ),
+    null
+  );
+
+  ok(
+    'une vraie correction garde sa suggestion',
+    normaliseFinding(
+      {
+        id: 'p1s1',
+        skill: 'consistency',
+        suggestion: 'Le budget est de 150 k€.',
+        explanation: 'Corrigé.',
+        priority: 'low',
+        confidence: 0.8,
+      },
+      context
+    ).suggestion === 'Le budget est de 150 k€.'
+  );
+}
 
 // ── transport de la revue ───────────────────────────────────
 eq(
@@ -816,6 +865,123 @@ eq(
     rateLimit('alice', config, now + 60 * 60 * 1000 + 1).allowed
   );
   resetRateLimits();
+}
+
+// ── document corrigé ────────────────────────────────────────
+{
+  // Le segment réellement modifié : c'est lui qui préserve la mise en forme.
+  eq(
+    'une faute d’orthographe ne change qu’un caractère',
+    changedSpan('Nous recomandons le MFA.', 'Nous recommandons le MFA.'),
+    { start: 10, end: 10, replacement: 'm' }
+  );
+  eq('une phrase inchangée ne produit aucun segment', changedSpan('Idem.', 'Idem.'), null);
+  eq(
+    'une réécriture complète est rendue telle quelle',
+    changedSpan('Bonjour.', 'Salut !'),
+    { start: 0, end: 8, replacement: 'Salut !' }
+  );
+  ok('deux segments disjoints ne se chevauchent pas', !overlaps({ start: 0, end: 3 }, { start: 5, end: 9 }));
+  ok('deux segments sécants, si', overlaps({ start: 0, end: 6 }, { start: 5, end: 9 }));
+  eq(
+    'les segments s’appliquent de droite à gauche, sans décaler les autres',
+    applySpans('aXbYc', [
+      { start: 1, end: 2, replacement: 'LONG' },
+      { start: 3, end: 4, replacement: 'Z' },
+    ]),
+    'aLONGbZc'
+  );
+
+  // Deux findings acceptés sur la même phrase.
+  const twice = mergeCorrections('Le tests a été réalisé hier soir.', [
+    { id: 'f1', suggestion: 'Les tests ont été réalisés hier soir.' },
+    { id: 'f2', suggestion: 'Le tests a été réalisé hier.' },
+  ]);
+  eq('deux corrections disjointes fusionnent', twice.text, 'Les tests ont été réalisés hier.');
+  eq('et sont toutes deux comptées', twice.applied, ['f1', 'f2']);
+
+  const clash = mergeCorrections('Une phrase ambigüe ici.', [
+    { id: 'f1', suggestion: 'Une phrase ambiguë ici.' },
+    { id: 'f2', suggestion: 'Une phrase claire ici.' },
+  ]);
+  eq('deux corrections sur les mêmes mots : la seconde est signalée', clash.conflicts, ['f2']);
+  eq('et jamais appliquée à l’aveugle', clash.applied, ['f1']);
+
+  // Le texte de l'analyse ne sort pas de la même porte que celui du fichier.
+  eq(
+    'une phrase est retrouvée malgré des espaces différents',
+    locate('Ligne un.\n\n   Une   phrase  espacée.\n', 'Une phrase espacée.'),
+    { start: 14, end: 36 }
+  );
+  eq('une phrase absente est rendue introuvable', locate('Rien ici.', 'Autre chose.'), null);
+  ok(
+    'la deuxième occurrence est trouvée après la première',
+    locate('Même phrase. Même phrase.', 'Même phrase.', 12).start === 13
+  );
+
+  // Une phrase à cheval sur deux lignes : remplacer la phrase entière
+  // fusionnerait les lignes, ce que « même présentation » interdit.
+  const wrapped = rewriteText('Audit — Northwind\nRapport final, mission 114.\n', [
+    {
+      sentenceId: 'p1s1',
+      original: 'Audit — Northwind Rapport final, mission 114.',
+      text: 'Audit — Northwind Rapport final, mission 115.',
+      ids: ['f0'],
+    },
+  ]);
+  eq(
+    'le saut de ligne interne survit à la correction',
+    wrapped.content,
+    'Audit — Northwind\nRapport final, mission 115.\n'
+  );
+
+  const rewritten = rewriteText('Nous recomandons le MFA. Une phrase intacte.', [
+    {
+      sentenceId: 'p1s1',
+      original: 'Nous recomandons le MFA.',
+      text: 'Nous recommandons le MFA.',
+      ids: ['f1'],
+    },
+    { sentenceId: 'p1s9', original: 'Phrase absente du fichier.', text: 'X.', ids: ['f9'] },
+  ]);
+  eq('la phrase corrigée l’est', rewritten.content, 'Nous recommandons le MFA. Une phrase intacte.');
+  eq('celle qu’on ne retrouve pas est signalée, pas ignorée', rewritten.notFound.map((e) => e.sentenceId), ['p1s9']);
+  eq('et ne compte pas comme appliquée', rewritten.applied, ['f1']);
+
+  // Seuls les findings acceptés sont appliqués.
+  const findings = [
+    { id: 'a', sentenceId: 'p1s1', original: 'Faute ici.', suggestion: 'Corrigé ici.' },
+    { id: 'b', sentenceId: 'p1s2', original: 'Autre faute.', suggestion: 'Autre corrigé.' },
+    { id: 'c', sentenceId: 'p1s3', original: 'Troisième.', suggestion: 'Troisième corrigée.' },
+  ];
+  const states = new Map([
+    ['a', 'accepted'],
+    ['b', 'rejected'],
+  ]);
+  const planned = plannedEdits(findings, states);
+  eq(
+    'un finding rejeté ou en attente ne touche pas le document',
+    planned.edits.map((edit) => edit.sentenceId),
+    ['p1s1']
+  );
+
+  // Un finding « à vérifier » n'a rien à remplacer : l'accepter vaut « noté ».
+  const advisory = [
+    { id: 'x', sentenceId: 'p1s1', original: 'Deux montants divergent.', advisory: true },
+  ];
+  eq(
+    'un finding sans correction ne modifie pas le document',
+    plannedEdits(advisory, new Map([['x', 'accepted']])).edits.length,
+    0
+  );
+
+  eq('le fichier produit porte son suffixe', reviewedName('rapport.docx'), 'rapport_RyderReviewed.docx');
+  eq('même sans extension', reviewedName('note'), 'note_RyderReviewed');
+  eq(
+    'le PDF est hors périmètre, les autres formats non',
+    [canRewrite({ kind: 'pdf' }), canRewrite({ kind: 'docx' }), canRewrite({ kind: 'text' })],
+    [false, true, true]
+  );
 }
 
 // ── session ─────────────────────────────────────────────────

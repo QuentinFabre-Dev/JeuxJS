@@ -128,7 +128,7 @@ const parseDocx = async (file) => {
     mammoth.extractRawText({ arrayBuffer: buffer }),
   ]);
 
-  return { blocks: textToBlocks(text), html };
+  return { blocks: textToBlocks(text), html, bytes: buffer };
 };
 
 /**
@@ -209,9 +209,12 @@ export const parseDocument = async (file) => {
       source = result.source;
       kind = 'pdf';
     } else if (ext === '.docx') {
-      const { blocks, html } = await parseDocx(file);
+      const { blocks, html, bytes } = await parseDocx(file);
       pages = paginate(blocks);
-      source = { html };
+      // The bytes are kept, not just the HTML: regenerating a corrected
+      // document means editing the original archive in place, and mammoth's
+      // HTML is a one-way, deliberately impoverished view of it.
+      source = { html, bytes };
       kind = 'docx';
     } else if (ext === '.pptx') {
       const result = await parsePptx(file);

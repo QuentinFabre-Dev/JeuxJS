@@ -172,7 +172,7 @@ n'existe.
 
 | Lot | Contenu | Effort |
 | --- | --- | --- |
-| **1** | Conserver les octets d'origine ; `locate.js` et `span.js` avec leurs tests ; TXT/MD de bout en bout ; bouton, compteur, rapport | ~1,5 j |
+| **1** ✔ | Octets d'origine conservés (DOCX, PPTX) ; `span.js`, `merge.js`, `locate.js`, `text.js` avec leurs tests ; TXT/MD de bout en bout ; bouton, compteur, rapport | *fait* |
 | **2** | **DOCX** : carte d'offsets des runs, application, parties annexes (en-têtes, pieds de page, notes), chaînage multi-corrections | ~2,5 j |
 | **3** | **PPTX** : nœuds `<a:t>`, détection de débordement, avertissement | ~1,5 j |
 | **4** | Banc de non-régression : corpus de vrais documents, chaque fichier produit rouvert et comparé | ~1 j |
@@ -196,6 +196,28 @@ n'existe.
   deux, télécharger, rouvrir dans Word et constater que **seules** les trois
   acceptées sont là.
 
+## Ce que le lot 1 a appris
+
+**Le resserrement ne sert pas qu'à Word.** En texte brut aussi, remplacer la
+phrase entière détruit ce qu'elle traverse : un titre réparti sur deux lignes
+est revenu sur une seule, la correction juste et la présentation perdue. Le
+même `changedSpan` qui protège le gras d'un run protège le saut de ligne d'un
+fichier texte. `locate` trouve la phrase, `changedSpan` la resserre, et seuls
+les caractères qui changent sont réécrits.
+
+**Tous les findings n'ont pas de correction à proposer.** « Cet acronyme est
+défini deux sections plus loin », « ces deux montants divergent » : ces
+findings désignent quelque chose à regarder, pas un mot à remplacer — le bon
+correctif est une décision que seul l'auteur peut prendre.
+
+`normaliseFinding` les jetait, parce qu'il refusait toute suggestion identique
+à la phrase d'origine. **Trois des cinq findings du document d'exemple
+n'arrivaient donc jamais à l'écran**, et personne ne l'avait vu : les contrôles
+étaient testés isolément, jamais à travers le normaliseur. Ils existent
+désormais comme findings *consultatifs* — affichés, triables, sans bloc de
+remplacement, et sans effet sur le document régénéré. Les accepter vaut
+« noté », pas « réécris ».
+
 ## Décisions à acter
 
 1. **Suivi des modifications Word** : livrable dès le lot 2 en option, ou
@@ -203,5 +225,4 @@ n'existe.
 2. **Que faire des findings `pending`** — ni acceptés ni rejetés au moment du
    clic ? Je propose de ne pas les appliquer et de le dire dans le bouton, la
    règle étant que le silence ne vaut pas accord sur un livrable client.
-3. **Nom du fichier produit** : `rapport-corrigé.docx` à côté de l'original, ou
-   suffixe daté ? Le premier, sauf avis contraire.
+3. ~~**Nom du fichier produit**~~ — acté : `rapport_RyderReviewed.docx`.

@@ -143,18 +143,24 @@ export default function FindingCard({
             </p>
           </div>
 
-          <div className="hidden md:flex items-center justify-center pt-5">
-            <ArrowRight className="h-4 w-4 text-slate-300" />
-          </div>
+          {/* An advisory finding has nothing to put on the right: the fix is a
+              decision only the author can make. */}
+          {finding.advisory ? null : (
+            <>
+              <div className="hidden md:flex items-center justify-center pt-5">
+                <ArrowRight className="h-4 w-4 text-slate-300" />
+              </div>
 
-          <div className="rounded-lg bg-emerald-50/70 ring-1 ring-emerald-100 px-3 py-2">
-            <p className="text-[10px] font-semibold uppercase tracking-wide text-emerald-700/80 mb-0.5">
-              Suggestion
-            </p>
-            <p className="text-[13px] text-emerald-900 leading-snug">
-              {finding.suggestion}
-            </p>
-          </div>
+              <div className="rounded-lg bg-emerald-50/70 ring-1 ring-emerald-100 px-3 py-2">
+                <p className="text-[10px] font-semibold uppercase tracking-wide text-emerald-700/80 mb-0.5">
+                  Suggestion
+                </p>
+                <p className="text-[13px] text-emerald-900 leading-snug">
+                  {finding.suggestion}
+                </p>
+              </div>
+            </>
+          )}
         </div>
 
         {finding.explanation && (
