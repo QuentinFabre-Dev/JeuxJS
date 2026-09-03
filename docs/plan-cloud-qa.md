@@ -183,15 +183,21 @@ lib/
     registry.js               les sept contrôles, leur moteur, leur skill    ✔ lot A
     pricing.js                paliers de modèle, prix, débit                 ✔ lot A
     estimate.js               durée et coût d'une sélection, avant lancement ✔ lot A
-    runner.js                 exécution d'une tâche, back-off, usage
+    runner.js                 exécution d'une tâche, back-off, usage         ✔ lot C
+    prompt.js                 chargement et rendu des gabarits .md           ✔ lot C
+    schema.js                 la forme unique des findings                   ✔ lot C
+    sentences.js              document → phrases, partagé client/serveur     ✔ lot C
     merge.js                  dédoublonnage phrase × critère
     local/
       terminology.js  figures.js  patterns.js  index.js         ✔ lot B
     llm/
-      mechanical.md  clarity-tone.md  consistency.md  requirements.md  critic.md
+      _system.md  mechanical.md  clarity-tone.md                     ✔ lot C
+      consistency.md  requirements.md  critic.md
 src/
   services/reviewStream.js    consommation du flux côté navigateur           ✔ lot A
+  services/reviewService.js   déterministes puis modèles, une seule porte    ✔ lot C
   components/ReviewEstimate.jsx  l'estimation, sous le sélecteur de skills   ✔ lot A
+  components/ReviewCost.jsx      le reçu, en fin de revue                    ✔ lot C
 ```
 
 Répartition d'exécution :
@@ -238,12 +244,12 @@ triage, score, structure de l'export Excel.
 | **0** ✔ | Migration Next.js, `/api/analyze` en SSE, authentification, fan‑out borné, planificateur | *fait* |
 | **A** ✔ | Registre des sept contrôles, planificateur branché sur le sélecteur de skills, estimation durée + coût affichée avant lancement, client du flux SSE. Le branchement de la progression dans `App.jsx` part au lot C : il n'y a rien à streamer tant qu'aucun contrôle n'a de moteur | *fait* |
 | **B** ✔ | Contrôles déterministes en JS : acronyme employé avant sa définition, variantes d'un terme du glossaire, deux écritures d'un même montant, formats de date mélangés, terme interdit trouvé. **Gratuits et instantanés** (30 ms sur 200 pages) | *fait* |
-| **C** | Contrôles modèles en `.md` (mécanique en Haiku, clarté + ton, cohérence, exigences en Opus), SDK Anthropic, sorties structurées, effort `low`, comptabilisation de l'`usage`, bascule de `App.jsx` sur le flux | ~2,5 j |
+| **C** ✔ | Contrôles modèles en `.md` (mécanique en Haiku, clarté + ton, cohérence, exigences en Opus), SDK Anthropic, sorties structurées, effort `low` sur Opus seul, prompt système mis en cache, `usage` par palier, reçu affiché en fin de revue, `App.jsx` branché sur le flux | *fait* |
 | **D** | Critique pipeliné, provenance, colonnes Excel | ~1,5 j |
 | **E** | Packs métier : glossaires, motifs, contrôles propres au métier | ~1 j |
 | **F** | Banc d'évaluation : latence, précision, rappel et coût **mesurés** par sélection ; comparaison Haiku / Opus sur la passe mécanique ; garde‑fous de budget | ~1,5 j |
 
-Reste ≈ **6,5 jours**.
+Reste ≈ **4 jours**.
 
 ### Ce que « cohérence » veut dire, précisément
 

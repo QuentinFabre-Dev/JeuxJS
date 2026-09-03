@@ -12,6 +12,9 @@
 import { eventStream } from '../../../lib/sse.js';
 import { runPool } from '../../../lib/checks/pool.js';
 import { planTasks, taskCountByEngine } from '../../../lib/checks/planner.js';
+import { checkById } from '../../../lib/checks/registry.js';
+import { runTask } from '../../../lib/checks/runner.js';
+import { documentSentences } from '../../../lib/checks/sentences.js';
 import { requireSession, unauthorised } from '../../../lib/session.js';
 
 export const runtime = 'nodejs';
@@ -37,19 +40,37 @@ export async function POST(request) {
     pagesPerBatch,
   }).filter((task) => task.engine === 'llm');
 
-  return eventStream(review(tasks, { documentModel, ...body }));
+  return eventStream(
+    review(tasks, {
+      documentModel,
+      // Built here rather than trusted from the client: the ids the model
+      // answers with must match what the browser will highlight.
+      sentences: documentSentences(documentModel),
+      context: {
+        docType: body.docType,
+        serviceLine: body.serviceLine,
+        language: body.language,
+        glossary: body.glossary ?? [],
+        requirements: body.requirements ?? [],
+      },
+      signal: request.signal,
+    })
+  );
 }
 
 async function* review(tasks, context) {
   yield ['plan', { tasks, byEngine: taskCountByEngine(tasks) }];
 
   const findings = [];
-  const usage = { inputTokens: 0, outputTokens: 0, cachedInputTokens: 0 };
+  // Kept per tier: Opus and Haiku tokens do not cost the same, so a single
+  // total could not be turned back into a price.
+  const usage = {};
 
   for await (const outcome of runPool(tasks, (task) => runTask(task, context), {
     concurrency: CONCURRENCY,
   })) {
     if (outcome.error) {
+      if (outcome.error.name === 'AbortError') return;
       // One check failing is not the review failing: report it and carry on.
       yield ['error', { task: outcome.task.id, message: outcome.error.message }];
       continue;
@@ -59,20 +80,18 @@ async function* review(tasks, context) {
       findings.push(finding);
       yield ['finding', { task: outcome.task.id, finding }];
     }
-    usage.inputTokens += outcome.value.usage?.inputTokens ?? 0;
-    usage.outputTokens += outcome.value.usage?.outputTokens ?? 0;
-    usage.cachedInputTokens += outcome.value.usage?.cachedInputTokens ?? 0;
+    const tier = checkById(outcome.task.check)?.model ?? 'main';
+    const bucket = (usage[tier] ??= {
+      inputTokens: 0,
+      outputTokens: 0,
+      cachedInputTokens: 0,
+    });
+    bucket.inputTokens += outcome.value.usage?.inputTokens ?? 0;
+    bucket.outputTokens += outcome.value.usage?.outputTokens ?? 0;
+    bucket.cachedInputTokens += outcome.value.usage?.cachedInputTokens ?? 0;
 
     yield ['done', { task: outcome.task.id, count: outcome.value.findings.length }];
   }
 
   yield ['end', { findings: findings.length, usage }];
 }
-
-/**
- * Runs one task. The Opus 5 checks arrive in batch C; until then the registry
- * holds no `llm` check, so this is never reached with a real task.
- */
-const runTask = async (task) => {
-  throw new Error(`Aucun moteur pour le contrôle « ${task.check} ».`);
-};

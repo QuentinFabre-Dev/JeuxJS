@@ -40,6 +40,16 @@ export default function useProvider() {
       return;
     }
 
+    // A fixed catalogue has nothing to enumerate: the tiers are chosen per
+    // check on the server, and a missing key surfaces on the first review
+    // rather than as a permanent red badge here.
+    if (PROVIDERS[engine]?.catalogueOnly) {
+      setStatus('ready');
+      setModels((PROVIDERS[engine].knownModels ?? []).map((name) => ({ name })));
+      setError(null);
+      return;
+    }
+
     setStatus('checking');
     setError(null);
 

@@ -26,6 +26,11 @@ import { planTasks, taskCountByEngine } from '../lib/checks/planner.js';
 import { estimateReview, formatCost, formatDuration } from '../lib/checks/estimate.js';
 import { checksForSkills } from '../lib/checks/registry.js';
 import { runLocalChecks, splitRequirements } from '../lib/checks/local/index.js';
+import { actualCost } from '../lib/checks/estimate.js';
+import { render, formatSentences } from '../lib/checks/prompt.js';
+import { buildRequest, sentencesForTask } from '../lib/checks/runner.js';
+import { checkById } from '../lib/checks/registry.js';
+import { documentSentences, forTransport, consistencyCandidates } from '../lib/checks/sentences.js';
 import { issueSession, verifySession, authDisabled } from '../lib/auth.js';
 
 let failures = 0;
@@ -431,6 +436,103 @@ eq(
   runLocalChecks(['terminology', 'figures', 'patterns'], big, { requirements: ['pas de "Acme"'] });
   const elapsed = performance.now() - started;
   ok(`200 pages passent sous 250 ms (${elapsed.toFixed(0)} ms)`, elapsed < 250);
+}
+
+// ── document → phrases ──────────────────────────────────────
+{
+  const documentModel = {
+    pages: [
+      [
+        { kind: 'heading', text: 'Synthèse' },
+        { kind: 'p', text: 'Première phrase.', rects: [{ x: 1 }] },
+      ],
+      [{ kind: 'p', text: 'Deuxième phrase, page 2.' }],
+    ],
+  };
+
+  eq(
+    'les ids suivent la position dans la page, titres compris',
+    documentSentences(documentModel).map((sentence) => sentence.id),
+    ['p1s2', 'p2s1']
+  );
+  ok(
+    'les rectangles ne partent pas au serveur : aucun prompt ne les lit',
+    !JSON.stringify(forTransport(documentModel)).includes('rects')
+  );
+  eq(
+    'les phrases porteuses de faits passent en tête des candidats de cohérence',
+    consistencyCandidates(
+      [
+        { id: 'p1s1', page: 1, text: 'Une phrase sans rien de vérifiable.' },
+        { id: 'p2s1', page: 2, text: 'Le montant est de 4,2 M€.' },
+      ],
+      1
+    ).map((sentence) => sentence.id),
+    ['p2s1']
+  );
+}
+
+// ── prompts et requêtes ─────────────────────────────────────
+{
+  eq(
+    'un gabarit substitue ses variables',
+    render('Type: {{docType}}\n{{sentences}}', { docType: 'report', sentences: 'p1s1: Bonjour.' }),
+    'Type: report\np1s1: Bonjour.'
+  );
+  eq(
+    'une variable absente disparaît au lieu de rester visible',
+    render('a{{inconnue}}b', {}),
+    'ab'
+  );
+  eq(
+    'les phrases sont numérotées comme le modèle doit répondre',
+    formatSentences([{ id: 'p1s1', text: 'Une phrase.' }]),
+    'p1s1: Une phrase.'
+  );
+
+  const sentences = [
+    { id: 'p1s1', page: 1, text: 'Phrase de la page une.' },
+    { id: 'p2s1', page: 2, text: 'Phrase de la page deux.' },
+  ];
+  eq(
+    'une tâche de lot ne voit que ses pages',
+    sentencesForTask({ scope: 'batch', pages: [2] }, sentences).map((s) => s.id),
+    ['p2s1']
+  );
+  eq(
+    'une tâche de portée document les voit toutes',
+    sentencesForTask({ scope: 'document' }, sentences).length,
+    2
+  );
+
+  const documentModel = { pages: [[{ kind: 'p', text: 'Phrase de la page une.' }]] };
+  const context = { docType: 'report', serviceLine: 'audit', language: 'français' };
+  const opus = buildRequest(checkById('clarity-tone'), { sentences, documentModel, context });
+  const haiku = buildRequest(checkById('mechanical'), { sentences, documentModel, context });
+
+  eq('le jugement rédactionnel part sur Opus', opus.model, 'claude-opus-5');
+  eq('la passe mécanique part sur Haiku', haiku.model, 'claude-haiku-4-5');
+  eq("l'effort est bridé sur Opus, dont la réflexion est facturée en sortie", opus.output_config.effort, 'low');
+  ok("il n'est pas envoyé à Haiku, qui le refuse", haiku.output_config.effort === undefined);
+  ok('la réflexion n’est jamais désactivée', opus.thinking === undefined);
+  eq('la sortie est contrainte par le schéma', opus.output_config.format.type, 'json_schema');
+  ok('le prompt système est mis en cache', opus.system[0].cache_control.type === 'ephemeral');
+  ok('les deux contrôles partagent le même prompt système', opus.system[0].text === haiku.system[0].text);
+  ok('les phrases arrivent numérotées dans le prompt', opus.messages[0].content.includes('p2s1: Phrase de la page deux.'));
+  ok('la langue du document est transmise', opus.messages[0].content.includes('français'));
+  ok('la sortie est plafonnée', opus.max_tokens <= 4096);
+}
+
+// ── facture réelle ──────────────────────────────────────────
+{
+  const bill = actualCost({
+    main: { inputTokens: 20000, outputTokens: 5000, cachedInputTokens: 10000 },
+    fast: { inputTokens: 12500, outputTokens: 4000, cachedInputTokens: 0 },
+  });
+  // Opus : 10k frais à 5 $/M + 10k cachés à 0,5 $/M + 5k sortis à 25 $/M = 0,18 $
+  // Haiku : 12,5k à 1 $/M + 4k à 5 $/M = 0,0325 $
+  eq('la facture distingue les paliers et le cache', Math.round(bill.dollars * 1000), 213);
+  eq('rien à facturer sans consommation', actualCost({}).dollars, 0);
 }
 
 // ── session ─────────────────────────────────────────────────

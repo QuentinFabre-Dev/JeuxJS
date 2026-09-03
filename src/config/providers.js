@@ -24,6 +24,19 @@ export const PROXY_BASE_URL = '/ollama';
 export const DEEPSEEK_BASE_URL = '/deepseek';
 
 export const PROVIDERS = {
+  claude: {
+    id: 'claude',
+    label: 'Claude (cloud)',
+    kind: 'cloud',
+    // Reviews run on the server, through /api/analyze: the browser never holds
+    // a key and never talks to Anthropic directly.
+    baseUrl: '/api/analyze',
+    defaultModel: 'claude-opus-5',
+    // A fixed catalogue with no listing endpoint of its own: the tiers are
+    // chosen per check, not per review, so there is nothing to enumerate.
+    catalogueOnly: true,
+    knownModels: ['claude-opus-5'],
+  },
   ollama: {
     id: 'ollama',
     label: 'Ollama (local)',
@@ -57,11 +70,12 @@ export const DEFAULT_SETTINGS = {
   numCtx: 8192,
   // Number of document pages sent to the model in a single request.
   pagesPerBatch: 2,
-  // 'ollama' | 'deepseek' | 'demo'
-  engine: 'ollama',
+  // 'claude' | 'ollama' | 'deepseek' | 'demo'
+  engine: 'claude',
   // One model is remembered per provider, so switching back and forth does not
   // lose the choice made on the other one.
   models: {
+    claude: PROVIDERS.claude.defaultModel,
     ollama: env.NEXT_PUBLIC_OLLAMA_MODEL || PROVIDERS.ollama.defaultModel,
     deepseek: PROVIDERS.deepseek.defaultModel,
   },
@@ -75,7 +89,9 @@ export const activeModel = (settings) =>
 
 /** The endpoint of the active provider: DeepSeek always goes through its proxy. */
 export const activeBaseUrl = (settings) =>
-  settings.engine === 'deepseek' ? DEEPSEEK_BASE_URL : settings.baseUrl;
+  PROVIDERS[settings.engine]?.kind === 'cloud'
+    ? PROVIDERS[settings.engine].baseUrl
+    : settings.baseUrl;
 
 export const loadSettings = () => {
   if (typeof localStorage === 'undefined') return { ...DEFAULT_SETTINGS };

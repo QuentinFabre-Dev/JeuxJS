@@ -8,6 +8,7 @@ import AnalysisProgress from './components/AnalysisProgress.jsx';
 import FindingsList from './components/FindingsList.jsx';
 import FindingsFilter from './components/FindingsFilter.jsx';
 import DocumentScore from './components/DocumentScore.jsx';
+import ReviewCost from './components/ReviewCost.jsx';
 import PriorityDistribution from './components/PriorityDistribution.jsx';
 import SkillCounts from './components/SkillCounts.jsx';
 import DocumentPreview from './components/DocumentPreview.jsx';
@@ -18,6 +19,7 @@ import CleanDocumentState from './components/CleanDocumentState.jsx';
 import OcrPrompt from './components/OcrPrompt.jsx';
 
 import { runMockAnalysis } from './services/mockAnalysisService.js';
+import { runCloudReview } from './services/reviewService.js';
 import {
   computeDocumentScore,
   countSentences,
@@ -65,6 +67,9 @@ export default function App() {
 
   const [status, setStatus] = useState('idle');
   const [progress, setProgress] = useState({ ratio: 0 });
+  // What the review actually consumed, reported once it is over: the estimate
+  // shown before the run is only worth something if the real figure follows.
+  const [usage, setUsage] = useState(null);
   const [findings, setFindings] = useState([]);
   const [reviewStates, setReviewStates] = useState(() => new Map());
   const [wasStopped, setWasStopped] = useState(false);
@@ -267,6 +272,7 @@ export default function App() {
     setIssue(null);
     setWasStopped(false);
     setProgress({ ratio: 0 });
+    setUsage(null);
 
     if (onlySkill) {
       // Drop this check's previous findings, keep the rest of the review.
@@ -299,6 +305,25 @@ export default function App() {
           onProgress: (ratio) => setProgress({ ratio }),
           onComplete: () => setStatus('done'),
         });
+        return;
+      }
+
+      if (provider.engine === 'claude') {
+        const summary = await runCloudReview({
+          documentModel,
+          skills,
+          customChecks,
+          docType,
+          serviceLine,
+          language: effectiveLanguage,
+          signal: controller.signal,
+          onFinding,
+          onProgress: setProgress,
+          onCheckError: (message) =>
+            setIssue({ message: 'A check could not run.', hint: message }),
+        });
+        setUsage(summary?.usage ?? null);
+        setStatus('done');
         return;
       }
 
@@ -663,6 +688,8 @@ export default function App() {
                     rerunningSkill={rerunningSkill}
                   />
                 </section>
+
+                <ReviewCost usage={usage} />
 
                 {/* Main row: findings + document preview */}
                 <section className="grid grid-cols-1 xl:grid-cols-12 gap-6">
