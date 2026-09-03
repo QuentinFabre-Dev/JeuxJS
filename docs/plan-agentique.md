@@ -2,8 +2,9 @@
 
 > **Statut : partiellement remplacé.** Le refus de LangChain / LangGraph acté
 > plus bas partait d'un moteur local (Ollama) et d'un pipeline linéaire. Avec
-> une API cloud et des agents éditables en Markdown, l'arbitrage change :
-> voir [`plan-langchain-langgraph.md`](plan-langchain-langgraph.md). Le reste
+> une API cloud, une sélection de contrôles et une exigence de latence,
+> l'arbitrage change :
+> voir [`plan-cloud-qa.md`](plan-cloud-qa.md). Le reste
 > du document — forme d'un agent, boucle bornée, contrat du critique, packs
 > métier — reste valable.
 
