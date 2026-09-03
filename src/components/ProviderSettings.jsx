@@ -75,7 +75,9 @@ export default function ProviderSettings({
       }
     : isCloud && status === 'ready'
       ? {
-          label: 'DeepSeek (cloud)',
+          // The provider's own name: hard-coding one was fine when there was
+          // a single cloud engine, and became a lie the day there were two.
+          label: PROVIDERS[engine]?.label ?? 'Cloud',
           chip: 'bg-orange-50 text-orange-700 ring-1 ring-orange-200',
           Icon: Cloud,
         }
