@@ -32,6 +32,37 @@ all. The plan for the cloud review pipeline is in
 The badge in the header shows the connection state. Green (`Local model`) means
 you can upload a document and hit **Analyse**.
 
+## Deploying on Vercel
+
+The app is a Next.js application with server routes: it needs the Next.js
+preset, not a static one.
+
+1. **Framework preset must be Next.js.** A project created back when this repo
+   was a Vite SPA keeps `Vite` and an output directory of `dist`. Next.js
+   builds into `.next`, Vercel finds nothing to serve, and every URL answers
+   `404: NOT_FOUND`. The committed `vercel.json` pins the preset; check the
+   project's General Settings too, and clear any Output Directory override.
+2. **Production branch.** Vercel deploys the production branch (`master` by
+   default). Work living only on a feature branch gets preview deployments;
+   the production domain keeps serving whatever `master` holds — or 404s if it
+   never built.
+3. **Environment variables**, in Project Settings → Environment Variables:
+   `OPENAI_API_KEY` (required), `SITE_PASSWORD` (optional; set it and the whole
+   site sits behind a shared password, leave it unset and the site is open).
+   Never prefix either with `NEXT_PUBLIC_`.
+4. **Function duration.** The review routes declare `maxDuration = 60`, the
+   Hobby ceiling — declaring more there fails the build. A ten-page review runs
+   in about twenty seconds. For long documents on a paid plan, raise it in
+   `vercel.json`:
+
+   ```json
+   { "functions": { "app/api/analyze/route.js": { "maxDuration": 300 } } }
+   ```
+
+If a deployment 404s, read the build log first: a failed build leaves the
+previous deployment in place, or none at all, and the 404 is the symptom rather
+than the problem.
+
 ## Reviewing a document
 
 1. **Scanned PDF? Run recognition.** A PDF with no extractable text is a scan.

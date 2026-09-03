@@ -20,7 +20,9 @@ import { requireSession, unauthorised } from '../../../lib/session.js';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
-export const maxDuration = 300;
+// Sixty seconds is the ceiling of Vercel's Hobby plan; declaring more fails
+// the build there. Raise it in `vercel.json` on a paid plan.
+export const maxDuration = 60;
 
 const CONCURRENCY = Number(process.env.ANALYSIS_CONCURRENCY ?? 12);
 

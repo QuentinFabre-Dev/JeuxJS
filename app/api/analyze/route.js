@@ -27,9 +27,12 @@ import { requireSession, unauthorised } from '../../../lib/session.js';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
-// A ten-page review lands in about twenty seconds; the ceiling is there for the
-// long documents, not the normal case.
-export const maxDuration = 300;
+// A ten-page review lands in about twenty seconds, so sixty is comfortable —
+// and sixty is also the ceiling of Vercel's Hobby plan. Declaring more there
+// fails the build, which is a deployment that does not exist rather than a
+// deployment that is slow. Raise it in `vercel.json` on a paid plan when long
+// documents need it.
+export const maxDuration = 60;
 
 const CONCURRENCY = Number(process.env.ANALYSIS_CONCURRENCY ?? 12);
 
