@@ -1,5 +1,8 @@
+import { useState } from 'react';
 import { useDropzone } from 'react-dropzone';
-import { UploadCloud, FileText, X } from 'lucide-react';
+import { FileText, Sparkles, UploadCloud, X } from 'lucide-react';
+
+import { loadSample } from '../services/sampleDocuments.js';
 
 const formatBytes = (bytes) => {
   if (!bytes) return '';
@@ -9,6 +12,21 @@ const formatBytes = (bytes) => {
 };
 
 export default function UploadZone({ file, onFileChange }) {
+  const [sampleError, setSampleError] = useState(null);
+
+  // The sample arrives as a real File through the ordinary path: same parser,
+  // same anchors, same checks. A demo that took a shortcut would demonstrate
+  // a pipeline that is not the one being shipped.
+  const useSample = async (event) => {
+    event.stopPropagation();
+    setSampleError(null);
+    try {
+      onFileChange(await loadSample('document'));
+    } catch (error) {
+      setSampleError(error.message);
+    }
+  };
+
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     // Formats the local parser can actually read (see services/documentParser.js).
     accept: {
@@ -72,6 +90,26 @@ export default function UploadZone({ file, onFileChange }) {
           or <span className="text-brand-600 font-medium">browse</span> ·
           PDF, DOCX, PPTX, TXT, MD (max 20 MB)
         </p>
+
+        <div className="mt-5 flex flex-col items-center gap-1.5">
+          <span className="text-[11px] uppercase tracking-wide text-slate-300">
+            or
+          </span>
+          <button
+            type="button"
+            onClick={useSample}
+            className="btn-ghost ring-1 ring-slate-200 !px-3 !py-1.5 !text-xs"
+          >
+            <Sparkles className="h-3.5 w-3.5 text-brand-600" />
+            Try a sample report
+          </button>
+          <p className="text-[11px] text-slate-400">
+            A short audit deliverable, with mistakes planted in it.
+          </p>
+          {sampleError && (
+            <p className="text-[11px] text-rose-600">{sampleError}</p>
+          )}
+        </div>
       </div>
     </div>
   );

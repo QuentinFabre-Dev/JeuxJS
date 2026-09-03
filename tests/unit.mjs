@@ -411,6 +411,24 @@ eq(
 
   const terms = run(['terminology'], { glossary: ['Cyber Sécurité'] });
   ok('un acronyme défini après son premier emploi est signalé', explains(terms, 'CVSS'));
+  ok(
+    'la référence renvoie à une page quand elle en désigne une autre',
+    explains(terms, 'en page 7')
+  );
+  ok(
+    'et à une direction sur un document d’une seule page',
+    explains(
+      runLocalChecks(
+        ['terminology'],
+        [
+          s('p1s1', 1, 'Le score CVSS est élevé.'),
+          s('p1s2', 1, 'Le Common Vulnerability Scoring System (CVSS) fait référence.'),
+        ],
+        {}
+      ),
+      'plus loin dans le document'
+    )
+  );
   eq(
     'il est signalé à sa première occurrence, pas à sa définition',
     terms.find((candidate) => candidate.explanation.includes('CVSS')).id,

@@ -65,6 +65,14 @@ than the problem.
 
 ## Reviewing a document
 
+0. **No file at hand? Use the sample.** The upload zone offers *Try a sample
+   report* — a short security audit deliverable with mistakes planted in it
+   (a misspelling, an agreement error, an acronym used before it is defined,
+   one amount written two ways, two date formats). The statement-of-work panel
+   offers the matching contract, which the sample deliverable breaks in three
+   different ways. Both arrive as real files through the ordinary path: same
+   parser, same anchors, same checks. A demo that took a shortcut would
+   demonstrate a pipeline that is not the one being shipped.
 1. **Scanned PDF? Run recognition.** A PDF with no extractable text is a scan.
    The app says so and offers to read it locally with Tesseract — engine, WASM
    and language data are all served from `public/tesseract/`, nothing is fetched

@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 
 import { parseDocument } from '../services/documentParser.js';
+import { loadSample } from '../services/sampleDocuments.js';
 import { runSowCheck } from '../services/sowService.js';
 import { rollupLabel } from '../../lib/checks/sow.js';
 import { actualCost, formatCost } from '../../lib/checks/estimate.js';
@@ -82,22 +83,33 @@ export default function SowCheck({ documentModel, language }) {
       'text/markdown': ['.md'],
     },
     multiple: false,
-    onDrop: async (files) => {
-      const file = files[0];
-      if (!file) return;
-      setStatus('parsing');
-      setError(null);
-      try {
-        const parsed = await parseDocument(file);
-        setSowFile(file);
-        setSowModel(parsed);
-        setStatus('idle');
-      } catch (parseError) {
-        setError(parseError.message);
-        setStatus('idle');
-      }
+    onDrop: (files) => {
+      if (files[0]) accept(files[0]);
     },
   });
+
+  const accept = async (file) => {
+    setStatus('parsing');
+    setError(null);
+    try {
+      const parsed = await parseDocument(file);
+      setSowFile(file);
+      setSowModel(parsed);
+    } catch (parseError) {
+      setError(parseError.message);
+    } finally {
+      setStatus('idle');
+    }
+  };
+
+  const useSample = async () => {
+    setError(null);
+    try {
+      await accept(await loadSample('sow'));
+    } catch (sampleError) {
+      setError(sampleError.message);
+    }
+  };
 
   const reset = () => {
     setSowFile(null);
@@ -175,6 +187,16 @@ export default function SowCheck({ documentModel, language }) {
             {status === 'parsing' ? 'Reading…' : 'Drop the signed SoW'}
           </p>
           <p className="mt-1 text-[11px] text-slate-400">PDF, DOCX, TXT, MD</p>
+          <button
+            type="button"
+            onClick={(event) => {
+              event.stopPropagation();
+              useSample();
+            }}
+            className="mt-3 text-[11px] font-medium text-brand-600 hover:underline"
+          >
+            or use the sample SoW
+          </button>
         </div>
       ) : (
         <div className="flex items-center gap-3">
