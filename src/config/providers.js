@@ -16,9 +16,9 @@
 
 const STORAGE_KEY = 'ryder.provider.settings';
 
-// `import.meta.env` only exists under Vite; guarding it keeps these modules
-// importable from plain Node (tests, scripts).
-const env = import.meta.env ?? {};
+// Next inlines `process.env.NEXT_PUBLIC_*` at build time; the guard keeps
+// these modules importable from plain Node (tests, scripts).
+const env = typeof process === 'undefined' ? {} : (process.env ?? {});
 
 export const PROXY_BASE_URL = '/ollama';
 export const DEEPSEEK_BASE_URL = '/deepseek';
@@ -52,7 +52,7 @@ export const isCloudProvider = (engine) => PROVIDERS[engine]?.kind === 'cloud';
 
 export const DEFAULT_SETTINGS = {
   // '/ollama' → Vite proxy. Any absolute URL → direct call (needs OLLAMA_ORIGINS).
-  baseUrl: env.VITE_OLLAMA_BASE_URL || PROXY_BASE_URL,
+  baseUrl: env.NEXT_PUBLIC_OLLAMA_BASE_URL || PROXY_BASE_URL,
   temperature: 0.2,
   numCtx: 8192,
   // Number of document pages sent to the model in a single request.
@@ -62,7 +62,7 @@ export const DEFAULT_SETTINGS = {
   // One model is remembered per provider, so switching back and forth does not
   // lose the choice made on the other one.
   models: {
-    ollama: env.VITE_OLLAMA_MODEL || PROVIDERS.ollama.defaultModel,
+    ollama: env.NEXT_PUBLIC_OLLAMA_MODEL || PROVIDERS.ollama.defaultModel,
     deepseek: PROVIDERS.deepseek.defaultModel,
   },
 };

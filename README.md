@@ -18,10 +18,20 @@ The old ZombieLand game lives in [`legacy/MBUFFAproject`](legacy/MBUFFAproject).
 curl -fsSL https://ollama.com/install.sh | sh
 ollama pull llama3.1:8b
 
-# 2. Run the app
+# 2. Start LanguageTool, the spelling and grammar engine
+docker compose up -d languagetool
+
+# 3. Run the app
 npm install
-npm run dev          # http://localhost:5173
+npm run dev          # http://localhost:3000
 ```
+
+The app is a Next.js application: the document is still parsed in the browser,
+but the model keys and the LanguageTool address live in the server process and
+never reach the client. Set `SITE_PASSWORD` to put the whole site behind a
+shared password; leave it empty in local development and there is no login at
+all. The plan for the cloud review pipeline is in
+[`docs/plan-cloud-qa.md`](docs/plan-cloud-qa.md).
 
 The badge in the header shows the connection state. Green (`Local model`) means
 you can upload a document and hit **Analyse**.
@@ -95,10 +105,10 @@ DEEPSEEK_API_KEY=sk-...
 
 Then restart `npm run dev` and pick **DeepSeek (cloud)** in the engine badge.
 
-The key is read by the Vite dev server and injected into the `/deepseek` proxy
+The key is read by the Next.js server and injected into the `/deepseek` route
 on the way out — it never reaches the browser. It is deliberately **not**
-prefixed `VITE_`: those variables are inlined into the bundle and would be
-public to anyone opening the devtools. The proxy also sidesteps CORS, which
+prefixed `NEXT_PUBLIC_`: those variables are inlined into the bundle and would
+be public to anyone opening the devtools. The route also sidesteps CORS, which
 OpenAI-compatible APIs do not open to browsers.
 
 Because the document text does leave the machine, the app asks for an explicit
@@ -115,7 +125,7 @@ endpoint, temperature, context size, pages per request. The choice is stored in
 | --- | --- | --- |
 | Engine | `Ollama (local)` | `Demo data` replays the mocked findings, useful for a client demo without a model |
 | Model | `llama3.1:8b` | The dropdown lists what is actually installed |
-| Endpoint | `/ollama` | Goes through the Vite proxy — no CORS setup |
+| Endpoint | `/ollama` | Goes through the app's own route — no CORS setup |
 | Temperature | `0.2` | Low = stable, repeatable reviews |
 | Context | `8192` | Raise it for dense pages |
 | Pages / call | `2` | Fewer pages = more requests, better accuracy |
@@ -123,7 +133,7 @@ endpoint, temperature, context size, pages per request. The choice is stored in
 Server-side defaults live in `.env` (copy `.env.example`):
 
 ```bash
-OLLAMA_HOST=http://127.0.0.1:11434   # proxy target, see vite.config.js
+OLLAMA_HOST=http://127.0.0.1:11434   # target of the /ollama route
 ```
 
 To call Ollama directly instead of through the proxy, set the endpoint to

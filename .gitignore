@@ -8,3 +8,6 @@ dist-ssr
 *.log
 .vscode
 .idea
+
+.next
+out

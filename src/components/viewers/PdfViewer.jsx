@@ -3,6 +3,10 @@ import { Loader2 } from 'lucide-react';
 
 import HighlightLayer from './HighlightLayer.jsx';
 
+// Served from `public/`, never from a CDN: the app has to work offline and a
+// reviewed document must not leak a request to a third party.
+const PDF_WORKER_SRC = '/pdfjs/pdf.worker.min.mjs';
+
 /**
  * Renders the real PDF pages and overlays the findings on top of them.
  *
@@ -122,10 +126,7 @@ export default function PdfViewer({
     (async () => {
       try {
         const pdfjs = await import('pdfjs-dist');
-        pdfjs.GlobalWorkerOptions.workerSrc = new URL(
-          'pdfjs-dist/build/pdf.worker.min.mjs',
-          import.meta.url
-        ).toString();
+        pdfjs.GlobalWorkerOptions.workerSrc = PDF_WORKER_SRC;
         // A copy per open: pdf.js detaches the buffer it receives.
         opened = await pdfjs.getDocument({ data: source.data.slice(0) }).promise;
         if (cancelled) {

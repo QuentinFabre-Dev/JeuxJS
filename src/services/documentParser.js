@@ -22,6 +22,10 @@ import {
   textToBlocks,
 } from './textBlocks.js';
 
+// Served from `public/`, never from a CDN: the app has to work offline and a
+// reviewed document must not leak a request to a third party.
+const PDF_WORKER_SRC = '/pdfjs/pdf.worker.min.mjs';
+
 export { joinPdfLines, splitSentences, textToBlocks };
 
 const MAX_BYTES = 20 * 1024 * 1024;
@@ -134,10 +138,7 @@ const parseDocx = async (file) => {
  */
 const parsePdf = async (file) => {
   const pdfjs = await import('pdfjs-dist');
-  pdfjs.GlobalWorkerOptions.workerSrc = new URL(
-    'pdfjs-dist/build/pdf.worker.min.mjs',
-    import.meta.url
-  ).toString();
+  pdfjs.GlobalWorkerOptions.workerSrc = PDF_WORKER_SRC;
 
   const data = await file.arrayBuffer();
   // pdf.js takes ownership of the buffer it is given, so the viewer gets a copy.

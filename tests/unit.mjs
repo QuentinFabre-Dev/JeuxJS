@@ -20,6 +20,10 @@ import { REVIEW_STATES, toggleState, stateOf } from '../src/data/review.js';
 import { buildMessages } from '../src/services/ollamaClient.js';
 import { parseSseChunk } from '../src/services/deepseekClient.js';
 import { activeModel, activeBaseUrl, isCloudProvider } from '../src/config/providers.js';
+import { encodeEvent, decodeEvent } from '../lib/sse.js';
+import { runPool } from '../lib/checks/pool.js';
+import { planTasks, taskCountByEngine } from '../lib/checks/planner.js';
+import { issueSession, verifySession, authDisabled } from '../lib/auth.js';
 
 let failures = 0;
 const eq = (label, actual, expected) => {
@@ -227,6 +231,101 @@ states = toggleState(states, 'x', REVIEW_STATES.ACCEPTED);
 eq('re-cliquer rouvre le finding', stateOf(states, 'x'), 'pending');
 states = toggleState(states, 'x', REVIEW_STATES.REJECTED);
 eq('rejeté', stateOf(states, 'x'), 'rejected');
+
+// ── transport de la revue ───────────────────────────────────
+eq(
+  'un événement se relit tel quel',
+  decodeEvent(encodeEvent('finding', { task: 'clarity:1', finding: { id: 'f1' } })),
+  { event: 'finding', data: { task: 'clarity:1', finding: { id: 'f1' } } }
+);
+eq(
+  'un saut de ligne dans le contenu ne casse pas la trame',
+  decodeEvent(encodeEvent('error', { message: 'ligne 1\nligne 2' })).data.message,
+  'ligne 1\nligne 2'
+);
+{
+  let threw = false;
+  try {
+    encodeEvent('inventé', {});
+  } catch {
+    threw = true;
+  }
+  ok('un événement hors protocole est refusé', threw);
+}
+
+// ── fan-out borné ───────────────────────────────────────────
+{
+  const order = [];
+  let inFlight = 0;
+  let peak = 0;
+  const tasks = [30, 10, 20, 5, 1].map((delay, index) => ({ id: `t${index}`, delay }));
+
+  const results = [];
+  for await (const outcome of runPool(
+    tasks,
+    async (task) => {
+      inFlight += 1;
+      peak = Math.max(peak, inFlight);
+      await new Promise((resolve) => setTimeout(resolve, task.delay));
+      inFlight -= 1;
+      order.push(task.id);
+      if (task.id === 't2') throw new Error('boum');
+      return task.id;
+    },
+    { concurrency: 2 }
+  )) {
+    results.push(outcome);
+  }
+
+  eq('toutes les tâches sont rendues', results.length, 5);
+  ok('la concurrence est respectée', peak <= 2);
+  ok(
+    'une tâche en échec est rendue comme telle, sans arrêter les autres',
+    results.filter((r) => r.error).length === 1 &&
+      results.filter((r) => r.value).length === 4
+  );
+  ok('les résultats sortent dans l’ordre d’arrivée', order.indexOf('t1') < order.indexOf('t0'));
+}
+
+// ── planification ───────────────────────────────────────────
+{
+  const registry = [
+    { id: 'clarity-tone', skills: ['clarity', 'tone'], engine: 'llm', scope: 'batch' },
+    { id: 'consistency', skills: ['consistency'], engine: 'llm', scope: 'document' },
+    { id: 'spelling-grammar', skills: ['spelling', 'grammar'], engine: 'languagetool', scope: 'document' },
+  ];
+  const plan = (skills, pageCount) =>
+    planTasks({ skills, pageCount, registry });
+
+  eq('un skill décoché ne produit aucune tâche', plan([], 10).length, 0);
+  eq(
+    'l’orthographe seule ne coûte aucun appel de modèle',
+    plan(['spelling'], 10).filter((task) => task.engine === 'llm').length,
+    0
+  );
+  eq('une page = une tâche pour les contrôles par lot', plan(['clarity'], 10).length, 10);
+  eq(
+    'un contrôle de portée document ne produit qu’une tâche',
+    plan(['consistency'], 10).length,
+    1
+  );
+  eq(
+    'la répartition par moteur alimente l’estimation',
+    taskCountByEngine(plan(['spelling', 'clarity', 'consistency'], 10)),
+    { languagetool: 1, llm: 11 }
+  );
+}
+
+// ── session ─────────────────────────────────────────────────
+{
+  const secret = 'mot-de-passe';
+  const cookie = await issueSession(secret);
+  ok('une session fraîche est valide', await verifySession(cookie, secret));
+  ok('un autre secret ne passe pas', !(await verifySession(cookie, 'autre')));
+  ok('une signature bricolée ne passe pas', !(await verifySession(`${Date.now() + 1000}.x`, secret)));
+  ok('une session expirée ne passe pas', !(await verifySession('1.abc', secret)));
+  ok('sans mot de passe configuré, l’authentification est désactivée', authDisabled({}));
+}
 
 console.log(failures === 0 ? '\n✔ tous les tests unitaires passent' : `\n✘ ${failures} test(s) en échec`);
 process.exit(failures === 0 ? 0 : 1);
