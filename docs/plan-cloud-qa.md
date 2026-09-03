@@ -4,12 +4,12 @@
 
 | Sujet | Décision |
 | --- | --- |
-| Jugement rédactionnel | **Claude Opus 5** (`claude-opus-5`), 5 $ / 25 $ par million de jetons |
-| Orthographe et grammaire | **Claude Haiku 4.5** (`claude-haiku-4-5`), 1 $ / 5 $ par million |
+| Jugement rédactionnel | **GPT‑5** (`gpt-5`), 1,25 $ / 10 $ par million de jetons |
+| Orthographe et grammaire | **GPT‑5 mini** (`gpt-5-mini`), 0,25 $ / 2 $ par million |
 | Terminologie, chiffres, exigences à motif | **JavaScript**, dans le navigateur |
 | Découpage | **Un lot = une page**, pour maximiser le parallélisme |
 | Cadre applicatif | **Next.js**, déployé sur Vercel |
-| Framework d'orchestration | **Aucun** — SDK Anthropic officiel, ni LangChain ni LangGraph |
+| Framework d'orchestration | **Aucun** — SDK OpenAI officiel, ni LangChain ni LangGraph |
 | Infrastructure hors Vercel | **Aucune** |
 
 ### Pourquoi LanguageTool a été écarté
@@ -21,18 +21,17 @@ disqualifié.
 | Poste, sur une revue de 10 pages | Coût |
 | --- | --- |
 | Orthographe + grammaire en LanguageTool | 0 $ |
-| Les mêmes en Haiku 4.5 | 0,03 $ |
-| Le reste de la revue (Opus 5) | ~0,42 $ |
+| Les mêmes en GPT‑5 mini | 0,01 $ |
+| Le reste de la revue (GPT‑5) | ~0,13 $ |
 
-LanguageTool économise **trois centimes sur une revue qui en coûte quarante‑cinq**.
-Le conteneur qui l'héberge coûte 5 à 10 $ par mois : il faut ~250 documents
-mensuels rien que pour le rembourser, et à mille documents il fait gagner 30 $
-sur une facture Opus de 450 $. Pour ce gain, on ajoutait un second hébergeur,
-une sonde de santé et un service à redémarrer — sur un projet qui n'a par
-ailleurs aucune infrastructure à exploiter.
+LanguageTool économise **un centime sur une revue qui en coûte quatorze**. Le
+conteneur qui l'héberge coûte 5 à 10 $ par mois : il faut ~800 documents
+mensuels rien que pour le rembourser. Pour ce gain, on ajoutait un second
+hébergeur, une sonde de santé et un service à redémarrer — sur un projet qui n'a
+par ailleurs aucune infrastructure à exploiter.
 
 Ce que la bascule coûte, dit honnêtement : une revue « orthographe seule » passe
-de 2 s et gratuite à ~6 s et 0,03 $, et le résultat n'est plus strictement
+de 2 s et gratuite à ~4 s et 0,01 $, et le résultat n'est plus strictement
 reproductible d'une exécution à l'autre — un moteur de règles rend toujours la
 même chose, un modèle non. Sur un outil qu'on relance après correction, cela se
 remarque. Cela ne vaut pas un service à posséder.
@@ -51,10 +50,10 @@ n'en sont pas là :
 | Terminologie, acronymes | Le terme est‑il celui du glossaire ? l'acronyme est‑il défini avant usage ? | **JS, navigateur** |
 | Chiffres, unités, devises, dates | Deux occurrences du même montant divergent‑elles ? | **JS, navigateur** |
 | Exigences client « mécaniques » (« aucun nom de client hors page de garde : "Acme Corp" ») | Une recherche de motif | **JS, navigateur** |
-| Orthographe, grammaire, accords | Une relecture attentive, sans finesse rédactionnelle | **Haiku 4.5** |
-| Clarté, ton | Jugement rédactionnel | **Opus 5** |
-| Cohérence inter‑pages | Contradictions, dérive terminologique | **Opus 5**, portée document |
-| Exigences client sémantiques (« les conclusions avant leur justification ») | Jugement | **Opus 5** |
+| Orthographe, grammaire, accords | Une relecture attentive, sans finesse rédactionnelle | **GPT‑5 mini** |
+| Clarté, ton | Jugement rédactionnel | **GPT‑5** |
+| Cohérence inter‑pages | Contradictions, dérive terminologique | **GPT‑5**, portée document |
+| Exigences client sémantiques (« les conclusions avant leur justification ») | Jugement | **GPT‑5** |
 
 Les trois premiers restent **gratuits et instantanés**, sans infrastructure :
 c'est du JavaScript sur le fil principal — mesuré à 30 ms pour un document de
@@ -62,7 +61,7 @@ c'est du JavaScript sur le fil principal — mesuré à 30 ms pour un document d
 messages. Le banc du lot F garde ce chiffre honnête ; le jour où ce ne sont plus
 des millisecondes, le worker est à un fichier de distance. La distinction qui compte n'est donc pas
 « local contre cloud », c'est **quel contrôle mérite quel moteur** — et sur les
-sept, trois n'ont besoin d'aucun modèle et un seul n'a pas besoin d'Opus.
+sept, trois n'ont besoin d'aucun modèle et un seul n'a pas besoin du gros.
 
 L'abstraction retenue est le **contrôle** (`check`), déclaratif :
 
@@ -72,7 +71,7 @@ L'abstraction retenue est le **contrôle** (`check`), déclaratif :
   label: 'Orthographe et grammaire',
   skills: ['spelling', 'grammar'],
   engine: 'llm',
-  model: 'fast',               // → claude-haiku-4-5
+  model: 'fast',               // → gpt-5-mini
   scope: 'batch',              // 1 page
   prompt: 'mechanical.md',
 }
@@ -81,10 +80,10 @@ L'abstraction retenue est le **contrôle** (`check`), déclaratif :
   id: 'clarity-tone',
   skills: ['clarity', 'tone'],
   engine: 'llm',
-  model: 'main',               // → claude-opus-5
+  model: 'main',               // → gpt-5
   scope: 'batch',
   prompt: 'clarity-tone.md',
-  effort: 'low',
+  effort: 'minimal',
 }
 ```
 
@@ -98,52 +97,51 @@ l'estimation affichée avant lancement.
 | # | Levier | Effet |
 | --- | --- | --- |
 | **L1** | Moteurs déterministes en JS pour ce qui n'a pas besoin d'un modèle | 3 contrôles sur 7 à coût et latence nuls |
-| **L2** | Modèle étagé : Haiku pour la passe mécanique, Opus pour le jugement | 5× moins cher et plus rapide sur un tiers des appels |
+| **L2** | Modèle étagé : le petit palier pour la passe mécanique, le gros pour le jugement | 5× moins cher et plus rapide sur un tiers des appels |
 | **L3** | **Fan‑out total** : toutes les tâches partent ensemble, dans la limite de concurrence | 3 vagues → 2, ≈ ×1,5 |
 | **L4** | **Lots d'une page** | Le temps est dominé par la sortie : moitié moins de sortie par appel, deux fois plus d'appels en parallèle |
 | **L5** | La passe « cohérence » ne dépend d'aucun lot : elle part à t = 0 | Retire ~15 s de la fin |
 | **L6** | Critique pipeliné, lot par lot, au lieu d'une phase finale | Retire ~10 s |
-| **L7** | `output_config: { effort: 'low' }` et `max_tokens` borné | **Point de vigilance sur Opus 5** : la réflexion est active par défaut et facturée en sortie. À effort `high`, la sortie peut tripler — en durée comme en coût |
-| **L8** | Préfixe de prompt stable → cache (`cache_read` à 0,1×) | TTFT plus court, entrée moins chère |
+| **L7** | `reasoning: { effort: 'minimal' }` et `max_output_tokens` borné | **Le poste de dérive** : les jetons de raisonnement sont facturés en sortie et payés en latence. À effort élevé, la sortie peut tripler |
+| **L8** | Instructions identiques d'un appel à l'autre → cache (0,1× sur l'entrée) | Gain réel mais modeste : le cache ne s'amorce qu'au‑delà d'une longueur de prompt, et ceux‑ci sont courts |
 | **L9** | Streaming vers l'interface | Latence *perçue* : premier finding à ~1 s |
 
 L4 inverse une intuition héritée d'Ollama : là‑bas, de gros lots réduisaient le
 nombre d'appels sérialisés. Avec une API parallèle, c'est l'inverse — plus de
 lots, plus petits, tous en même temps.
 
-Sur L7, une précision qui compte : la réflexion d'Opus 5 ne se **désactive** pas
-(cela dégrade l'appel d'outil et laisse fuir des balises internes dans la
-réponse). On la laisse adaptative et on baisse `effort` à `low`, ce qui coupe le
-coût sans les effets de bord.
+Sur L7, une précision qui compte : ces contrôles signalent des défauts au niveau
+de la phrase. Réfléchir plus longtemps n'y achète rien de mesurable, et peut
+tripler la facture comme la durée. `minimal` est donc le défaut, et le lot F est
+là pour dire si un contrôle mérite mieux.
 
 ## Durée et coût, par sélection
 
 Hypothèses : 10 pages ≈ 4 000 mots ≈ 5 500 jetons, lots d'une page → 10 lots,
-Opus 5 à effort `low`, concurrence 12.
+raisonnement `minimal`, concurrence 12.
 
 | Sélection | Appels | **Durée** | **Coût** |
 | --- | --- | --- | --- |
 | Terminologie, chiffres, motifs | 0 | **< 0,5 s** | 0 $ |
-| Orthographe + grammaire | 10 (Haiku) | **≈ 6 s** | ≈ 0,03 $ |
-| Clarté + ton | 10 (Opus) | **≈ 10 s** | ≈ 0,17 $ |
-| Déterministes + mécanique + clarté + ton + cohérence | 21 | **≈ 16 s** | ≈ 0,25 $ |
-| Tout, exigences sémantiques comprises | 31 | **≈ 20 s** | ≈ 0,42 $ |
-| Tout + critique `uncertain` | ~34 | **≈ 22 s** | ≈ 0,49 $ |
+| Orthographe + grammaire | 10 (mini) | **≈ 4 s** | ≈ 0,01 $ |
+| Clarté + ton | 10 | **≈ 9 s** | ≈ 0,06 $ |
+| Déterministes + mécanique + clarté + ton + cohérence | 21 | **≈ 15 s** | ≈ 0,09 $ |
+| Tout, exigences sémantiques comprises | 31 | **≈ 19 s** | ≈ 0,14 $ |
+| Tout + critique `uncertain` | ~34 | **≈ 21 s** | ≈ 0,16 $ |
 
-Pour référence : Opus 5 sur la passe mécanique aussi porterait la revue complète
-à ~0,63 $ pour une qualité que rien ne distingue sur de l'orthographe. Le
-réglage tient en une ligne si la mesure du lot F dit le contraire.
+Ces chiffres sortent de `lib/checks/estimate.js`, pas d'un tableur : ce sont
+ceux que l'interface affiche avant de lancer, et ils sont verrouillés par des
+tests. Une variation de tarif qui ferait diverger le plan et le code casse la
+suite.
 
-Deux remarques honnêtes :
+Une remarque honnête : **le gros palier est le poste de coût**, à ~90 % de la
+facture. À 0,14 $ le document, mille revues par mois coûtent 140 $ — chiffre à
+mettre en face du prix de vente avant d'ouvrir le service. Passer la passe
+mécanique sur `gpt-5-nano` diviserait encore son coût par cinq ; le lot F dira
+si la qualité suit.
 
-- **Opus 5 est le poste de coût**, à ~85 % de la facture. À 0,49 $ le document,
-  mille revues par mois coûtent 490 $ — chiffre à mettre en face du prix de vente
-  avant d'ouvrir le service.
-- **Le mode rapide existe** (`speed: 'fast'`, recherche préliminaire, Opus 5) :
-  jusqu'à 2,5× de débit en sortie, donc la revue complète autour de 12 s, au prix
-  fort (10 $ / 50 $ le million). À réserver à une offre premium, pas au défaut.
-
-Premier résultat affiché : ~0,5 s (déterministe), ~4 s (premier lot Haiku).
+Premier résultat affiché : ~0,5 s (déterministe), ~4 s (premier lot du petit
+palier).
 
 Limites de débit : une revue complète pousse une trentaine de requêtes. Le
 fan‑out est **borné par un réglage** (défaut 12) avec back‑off sur 429 — une
@@ -157,11 +155,12 @@ peu plus tard.
   Un pool borné et un générateur asynchrone font le travail en ~150 lignes
   testables — c'est ce que le lot 0 a livré. Il redeviendra pertinent si le
   triage humain entre dans le graphe.
-- **LangChain** — son intérêt était d'abstraire le fournisseur. Le fournisseur
-  est fixé, et ce qu'on veut d'Opus 5 est précisément ce qu'une couche
-  d'abstraction rabote : `output_config.effort`, les sorties structurées
-  (`output_config.format`), le contrôle du cache, le mode rapide. Le SDK officiel
-  `@anthropic-ai/sdk` est plus direct et mieux typé.
+- **LangChain** — son intérêt était d'abstraire le fournisseur. Or ce qu'on veut
+  du modèle est précisément ce qu'une couche d'abstraction rabote :
+  `reasoning.effort`, les sorties structurées strictes, la ventilation exacte de
+  l'`usage` par palier. Le SDK officiel `openai` est plus direct et mieux typé —
+  et c'est lui, pas une abstraction, qui a servi de source pour les noms de
+  champs plutôt qu'une mémoire de leur forme.
 
 Sorties structurées : le schéma des findings est déclaré une fois et contraint
 côté API, ce qui supprime `extractJson` et `scanCompleteObjects` — la
@@ -221,7 +220,7 @@ triage, score, structure de l'export Excel.
   `runner.js`, la normalisation reste et gagne les champs de provenance
   (`check`, `model`, `verified`).
 - `ollamaClient.js` / `deepseekClient.js` / `services/providers.js` — remplacés
-  par le SDK Anthropic côté serveur. Ollama disparaît du chemin nominal.
+  par le SDK OpenAI côté serveur. Ollama disparaît du chemin nominal.
 - Interface — moteur et estimation par contrôle avant lancement ; progression par
   contrôle, les déterministes passant au vert immédiatement.
 - Export Excel — deux colonnes : contrôle d'origine, statut de vérification.
@@ -230,12 +229,12 @@ triage, score, structure de l'export Excel.
 
 | Risque | Traitement |
 | --- | --- |
-| Coût d'Opus 5 sur du volume | Effort `low`, modèle étagé, cache sur le préfixe, budget affiché par revue et plafond configurable ; le tableau de coût est **mesuré** au lot F, pas supposé |
-| Réflexion active par défaut qui gonfle la sortie | `effort: 'low'` et `max_tokens` borné ; jamais désactivée (effets de bord documentés), seulement réduite |
-| Haiku moins fin qu'Opus sur la grammaire | Le lot F compare les deux sur le même corpus annoté ; si l'écart est réel, le réglage bascule en une ligne |
+| Coût du gros palier sur du volume | Effort `minimal`, modèle étagé, instructions cachables, budget affiché par revue et plafond configurable ; le tableau de coût est **mesuré** au lot F, pas supposé |
+| Jetons de raisonnement qui gonflent la sortie | `reasoning: { effort: 'minimal' }` et `max_output_tokens` borné ; le reçu de fin de revue les expose |
+| Le petit palier moins fin sur la grammaire | Le lot F compare les paliers sur le même corpus annoté ; si l'écart est réel, le réglage bascule en une variable d'environnement |
 | Non‑reproductibilité d'une revue à l'autre | Température basse, prompts figés et versionnés ; le triage déjà en place absorbe les variations résiduelles |
 | Limites de débit sur le fan‑out | Concurrence plafonnée et réglable, back‑off sur 429, dégradation en durée et non en échec |
-| Confidentialité | Le texte transite par notre backend puis Anthropic ; confirmation explicite au premier envoi, aucun stockage serveur, contrôles déterministes marqués comme ne sortant pas du navigateur |
+| Confidentialité | Le texte transite par notre backend puis OpenAI ; confirmation explicite au premier envoi, aucun stockage serveur, contrôles déterministes marqués comme ne sortant pas du navigateur |
 
 ## Lots
 
@@ -244,10 +243,10 @@ triage, score, structure de l'export Excel.
 | **0** ✔ | Migration Next.js, `/api/analyze` en SSE, authentification, fan‑out borné, planificateur | *fait* |
 | **A** ✔ | Registre des sept contrôles, planificateur branché sur le sélecteur de skills, estimation durée + coût affichée avant lancement, client du flux SSE. Le branchement de la progression dans `App.jsx` part au lot C : il n'y a rien à streamer tant qu'aucun contrôle n'a de moteur | *fait* |
 | **B** ✔ | Contrôles déterministes en JS : acronyme employé avant sa définition, variantes d'un terme du glossaire, deux écritures d'un même montant, formats de date mélangés, terme interdit trouvé. **Gratuits et instantanés** (30 ms sur 200 pages) | *fait* |
-| **C** ✔ | Contrôles modèles en `.md` (mécanique en Haiku, clarté + ton, cohérence, exigences en Opus), SDK Anthropic, sorties structurées, effort `low` sur Opus seul, prompt système mis en cache, `usage` par palier, reçu affiché en fin de revue, `App.jsx` branché sur le flux | *fait* |
+| **C** ✔ | Contrôles modèles en `.md` (mécanique sur le petit palier, clarté + ton, cohérence, exigences sur le gros), SDK OpenAI, sorties structurées strictes, raisonnement `minimal`, instructions cachables, `usage` par palier, reçu affiché en fin de revue, `App.jsx` branché sur le flux | *fait* |
 | **D** | Critique pipeliné, provenance, colonnes Excel | ~1,5 j |
 | **E** | Packs métier : glossaires, motifs, contrôles propres au métier | ~1 j |
-| **F** | Banc d'évaluation : latence, précision, rappel et coût **mesurés** par sélection ; comparaison Haiku / Opus sur la passe mécanique ; garde‑fous de budget | ~1,5 j |
+| **F** | Banc d'évaluation : latence, précision, rappel et coût **mesurés** par sélection ; comparaison des paliers (`nano` / `mini` / `gpt-5`) sur la passe mécanique ; garde‑fous de budget | ~1,5 j |
 
 Reste ≈ **4 jours**.
 
@@ -260,7 +259,7 @@ cocher en active trois, sur deux moteurs différents.
 | --- | --- | --- | --- |
 | `terminology` | « CVSS » employé page 3, défini page 7 | navigateur | Un **fait**, pas un jugement : un index des premières occurrences |
 | `figures` | « 4,2 M€ » page 2, « 4.2M€ » page 8 | navigateur | Extraire, normaliser, comparer. Aucune interprétation |
-| `consistency` | Page 2 dit la migration terminée, page 9 la dit en cours | **Opus 5** | Aucune règle ne repère ça : il faut comprendre les deux phrases |
+| `consistency` | Page 2 dit la migration terminée, page 9 la dit en cours | **GPT‑5** | Aucune règle ne repère ça : il faut comprendre les deux phrases |
 
 Le navigateur ne fait pas « la cohérence ». Il fait la partie où la contradiction
 est visible dans les caractères ; le modèle garde celle où elle est dans le sens.
@@ -283,7 +282,7 @@ guillemets pour rendre gratuit un contrôle payant.
 - `npm test` — contrôles déterministes (jeux de phrases fautives attendues),
   planificateur (sélection → nombre exact de tâches), fusion, politiques,
   transport et fan‑out (déjà couverts).
-- Fausse API Anthropic : nombre d'appels par sélection, concurrence effective,
+- Fausse API OpenAI : nombre d'appels par sélection, concurrence effective,
   respect du back‑off sur 429, comportement quand un contrôle échoue.
 - Mesure de latence **et de coût réel** (`usage.input_tokens`,
   `cache_read_input_tokens`, `output_tokens`) sur un `.docx` de 10 pages, pour

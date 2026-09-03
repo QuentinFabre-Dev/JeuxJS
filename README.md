@@ -24,7 +24,7 @@ npm run dev          # http://localhost:3000
 ```
 
 The app is a Next.js application: the document is still parsed in the browser,
-but the model keys live in the server process and never reach the client. Set `SITE_PASSWORD` to put the whole site behind a
+but the model key lives in the server process and never reaches the client. Set `SITE_PASSWORD` to put the whole site behind a
 shared password; leave it empty in local development and there is no login at
 all. The plan for the cloud review pipeline is in
 [`docs/plan-cloud-qa.md`](docs/plan-cloud-qa.md).

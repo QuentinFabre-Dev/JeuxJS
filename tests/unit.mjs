@@ -344,12 +344,12 @@ eq(
   const cents = (skills) => Math.round(estimateFor(skills).dollars * 100);
 
   eq('rien de sélectionné, rien à payer', cents([]), 0);
-  eq('orthographe + grammaire : 3 centimes sur 10 pages', cents(['spelling', 'grammar']), 3);
-  eq('clarté + ton : 18 centimes', cents(['clarity', 'tone']), 18);
+  eq('orthographe + grammaire : 1 centime sur 10 pages', cents(['spelling', 'grammar']), 1);
+  eq('clarté + ton : 6 centimes', cents(['clarity', 'tone']), 6);
   eq(
-    'revue complète : 42 centimes',
+    'revue complète : 14 centimes',
     cents(['spelling', 'grammar', 'clarity', 'tone', 'consistency', 'custom']),
-    42
+    14
   );
   ok(
     'la passe mécanique est cinq fois moins chère que le jugement rédactionnel',
@@ -507,20 +507,29 @@ eq(
 
   const documentModel = { pages: [[{ kind: 'p', text: 'Phrase de la page une.' }]] };
   const context = { docType: 'report', serviceLine: 'audit', language: 'français' };
-  const opus = buildRequest(checkById('clarity-tone'), { sentences, documentModel, context });
-  const haiku = buildRequest(checkById('mechanical'), { sentences, documentModel, context });
+  const main = buildRequest(checkById('clarity-tone'), { sentences, documentModel, context });
+  const fast = buildRequest(checkById('mechanical'), { sentences, documentModel, context });
 
-  eq('le jugement rédactionnel part sur Opus', opus.model, 'claude-opus-5');
-  eq('la passe mécanique part sur Haiku', haiku.model, 'claude-haiku-4-5');
-  eq("l'effort est bridé sur Opus, dont la réflexion est facturée en sortie", opus.output_config.effort, 'low');
-  ok("il n'est pas envoyé à Haiku, qui le refuse", haiku.output_config.effort === undefined);
-  ok('la réflexion n’est jamais désactivée', opus.thinking === undefined);
-  eq('la sortie est contrainte par le schéma', opus.output_config.format.type, 'json_schema');
-  ok('le prompt système est mis en cache', opus.system[0].cache_control.type === 'ephemeral');
-  ok('les deux contrôles partagent le même prompt système', opus.system[0].text === haiku.system[0].text);
-  ok('les phrases arrivent numérotées dans le prompt', opus.messages[0].content.includes('p2s1: Phrase de la page deux.'));
-  ok('la langue du document est transmise', opus.messages[0].content.includes('français'));
-  ok('la sortie est plafonnée', opus.max_tokens <= 4096);
+  eq('le jugement rédactionnel part sur le palier raisonnement', main.model, 'gpt-5');
+  eq('la passe mécanique part sur le petit palier', fast.model, 'gpt-5-mini');
+  eq(
+    'le raisonnement est bridé : ses jetons sont facturés en sortie',
+    [main.reasoning.effort, fast.reasoning.effort],
+    ['minimal', 'minimal']
+  );
+  eq('la sortie est contrainte par le schéma', main.text.format.type, 'json_schema');
+  ok('en mode strict', main.text.format.strict === true);
+  ok(
+    'le schéma strict exige toutes ses propriétés',
+    main.text.format.schema.properties.findings.items.required.includes('custom_label')
+  );
+  ok(
+    'les instructions sont identiques d’un contrôle à l’autre, donc cachables',
+    main.instructions === fast.instructions
+  );
+  ok('les phrases arrivent numérotées dans le prompt', main.input.includes('p2s1: Phrase de la page deux.'));
+  ok('la langue du document est transmise', main.input.includes('français'));
+  ok('la sortie est plafonnée', main.max_output_tokens <= 4096);
 }
 
 // ── facture réelle ──────────────────────────────────────────
@@ -529,9 +538,13 @@ eq(
     main: { inputTokens: 20000, outputTokens: 5000, cachedInputTokens: 10000 },
     fast: { inputTokens: 12500, outputTokens: 4000, cachedInputTokens: 0 },
   });
-  // Opus : 10k frais à 5 $/M + 10k cachés à 0,5 $/M + 5k sortis à 25 $/M = 0,18 $
-  // Haiku : 12,5k à 1 $/M + 4k à 5 $/M = 0,0325 $
-  eq('la facture distingue les paliers et le cache', Math.round(bill.dollars * 1000), 213);
+  // GPT-5 : 10k frais à 1,25 $/M + 10k cachés à 0,125 $/M + 5k sortis à 10 $/M
+  // GPT-5 mini : 12,5k à 0,25 $/M + 4k à 2 $/M
+  eq(
+    'la facture distingue les paliers et le cache',
+    Number(bill.dollars.toFixed(4)),
+    Number((0.0125 + 0.00125 + 0.05 + 0.003125 + 0.008).toFixed(4))
+  );
   eq('rien à facturer sans consommation', actualCost({}).dollars, 0);
 }
 

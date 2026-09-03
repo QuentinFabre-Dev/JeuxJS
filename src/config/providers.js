@@ -24,18 +24,18 @@ export const PROXY_BASE_URL = '/ollama';
 export const DEEPSEEK_BASE_URL = '/deepseek';
 
 export const PROVIDERS = {
-  claude: {
-    id: 'claude',
-    label: 'Claude (cloud)',
+  openai: {
+    id: 'openai',
+    label: 'OpenAI (cloud)',
     kind: 'cloud',
     // Reviews run on the server, through /api/analyze: the browser never holds
-    // a key and never talks to Anthropic directly.
+    // a key and never talks to OpenAI directly.
     baseUrl: '/api/analyze',
-    defaultModel: 'claude-opus-5',
+    defaultModel: 'gpt-5',
     // A fixed catalogue with no listing endpoint of its own: the tiers are
     // chosen per check, not per review, so there is nothing to enumerate.
     catalogueOnly: true,
-    knownModels: ['claude-opus-5'],
+    knownModels: ['gpt-5'],
   },
   ollama: {
     id: 'ollama',
@@ -70,12 +70,12 @@ export const DEFAULT_SETTINGS = {
   numCtx: 8192,
   // Number of document pages sent to the model in a single request.
   pagesPerBatch: 2,
-  // 'claude' | 'ollama' | 'deepseek' | 'demo'
-  engine: 'claude',
+  // 'openai' | 'ollama' | 'deepseek' | 'demo'
+  engine: 'openai',
   // One model is remembered per provider, so switching back and forth does not
   // lose the choice made on the other one.
   models: {
-    claude: PROVIDERS.claude.defaultModel,
+    openai: PROVIDERS.openai.defaultModel,
     ollama: env.NEXT_PUBLIC_OLLAMA_MODEL || PROVIDERS.ollama.defaultModel,
     deepseek: PROVIDERS.deepseek.defaultModel,
   },

@@ -308,7 +308,7 @@ export default function App() {
         return;
       }
 
-      if (provider.engine === 'claude') {
+      if (provider.engine === 'openai') {
         const summary = await runCloudReview({
           documentModel,
           skills,

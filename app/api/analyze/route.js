@@ -62,7 +62,7 @@ async function* review(tasks, context) {
   yield ['plan', { tasks, byEngine: taskCountByEngine(tasks) }];
 
   const findings = [];
-  // Kept per tier: Opus and Haiku tokens do not cost the same, so a single
+  // Kept per tier: the two models' tokens do not cost the same, so a single
   // total could not be turned back into a price.
   const usage = {};
 
