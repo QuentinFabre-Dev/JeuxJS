@@ -25,6 +25,8 @@ export default function AnalysisConfig({
   onSavePlaybook,
   onDeletePlaybook,
   pageCount,
+  criticPolicy,
+  onCriticPolicyChange,
 }) {
   const [draft, setDraft] = useState('');
   const [playbookName, setPlaybookName] = useState('');
@@ -111,6 +113,32 @@ export default function AnalysisConfig({
             pageCount={pageCount}
           />
         </div>
+
+        {/* Verification */}
+        <div className="mt-3 flex items-center gap-2">
+          <label htmlFor="critic" className="text-[11px] font-medium text-slate-600">
+            Second opinion
+          </label>
+          <select
+            id="critic"
+            value={criticPolicy}
+            onChange={(e) => onCriticPolicyChange?.(e.target.value)}
+            className="flex-1 rounded-lg border border-slate-200 bg-white px-2 py-1
+                       text-[11px] text-slate-700 shadow-soft
+                       focus:outline-none focus:ring-2 focus:ring-brand-500/30"
+          >
+            <option value="off">Off — show every finding as it comes</option>
+            <option value="uncertain">
+              Uncertain calls only — recommended
+            </option>
+            <option value="all">Every finding — slowest, most expensive</option>
+          </select>
+        </div>
+        <p className="mt-1.5 text-[10px] text-slate-400">
+          A second pass challenges findings before you triage them. Findings
+          appear first and are amended after, so this never delays the first
+          result — the estimate above excludes it.
+        </p>
       </section>
 
       {/* Playbooks */}

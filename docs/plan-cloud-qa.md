@@ -186,12 +186,13 @@ lib/
     prompt.js                 chargement et rendu des gabarits .md           ✔ lot C
     schema.js                 la forme unique des findings                   ✔ lot C
     sentences.js              document → phrases, partagé client/serveur     ✔ lot C
+    critic.js                 politiques, verdicts, taux de rejet            ✔ lot D
     merge.js                  dédoublonnage phrase × critère
     local/
       terminology.js  figures.js  patterns.js  index.js         ✔ lot B
     llm/
       _system.md  mechanical.md  clarity-tone.md                     ✔ lot C
-      consistency.md  requirements.md  critic.md
+      consistency.md  requirements.md  critic.md                     ✔ lot D
 src/
   services/reviewStream.js    consommation du flux côté navigateur           ✔ lot A
   services/reviewService.js   déterministes puis modèles, une seule porte    ✔ lot C
@@ -231,6 +232,7 @@ triage, score, structure de l'export Excel.
 | --- | --- |
 | Coût du gros palier sur du volume | Effort `minimal`, modèle étagé, instructions cachables, budget affiché par revue et plafond configurable ; le tableau de coût est **mesuré** au lot F, pas supposé |
 | Jetons de raisonnement qui gonflent la sortie | `reasoning: { effort: 'minimal' }` et `max_output_tokens` borné ; le reçu de fin de revue les expose |
+| Critique complaisant qui ne rejette jamais | Le taux de rejet est publié en fin de revue ; un critique à 0 % se voit tout de suite |
 | Le petit palier moins fin sur la grammaire | Le lot F compare les paliers sur le même corpus annoté ; si l'écart est réel, le réglage bascule en une variable d'environnement |
 | Non‑reproductibilité d'une revue à l'autre | Température basse, prompts figés et versionnés ; le triage déjà en place absorbe les variations résiduelles |
 | Limites de débit sur le fan‑out | Concurrence plafonnée et réglable, back‑off sur 429, dégradation en durée et non en échec |
@@ -244,11 +246,42 @@ triage, score, structure de l'export Excel.
 | **A** ✔ | Registre des sept contrôles, planificateur branché sur le sélecteur de skills, estimation durée + coût affichée avant lancement, client du flux SSE. Le branchement de la progression dans `App.jsx` part au lot C : il n'y a rien à streamer tant qu'aucun contrôle n'a de moteur | *fait* |
 | **B** ✔ | Contrôles déterministes en JS : acronyme employé avant sa définition, variantes d'un terme du glossaire, deux écritures d'un même montant, formats de date mélangés, terme interdit trouvé. **Gratuits et instantanés** (30 ms sur 200 pages) | *fait* |
 | **C** ✔ | Contrôles modèles en `.md` (mécanique sur le petit palier, clarté + ton, cohérence, exigences sur le gros), SDK OpenAI, sorties structurées strictes, raisonnement `minimal`, instructions cachables, `usage` par palier, reçu affiché en fin de revue, `App.jsx` branché sur le flux | *fait* |
-| **D** | Critique pipeliné, provenance, colonnes Excel | ~1,5 j |
+| **D** ✔ | Vérification par un second appel (politiques `off` / `uncertain` / `all`, réglable dans l'interface), provenance sur la carte et dans l'export, taux de rejet publié | *fait* |
 | **E** | Packs métier : glossaires, motifs, contrôles propres au métier | ~1 j |
 | **F** | Banc d'évaluation : latence, précision, rappel et coût **mesurés** par sélection ; comparaison des paliers (`nano` / `mini` / `gpt-5`) sur la passe mécanique ; garde‑fous de budget | ~1,5 j |
 
-Reste ≈ **4 jours**.
+Reste ≈ **2,5 jours**.
+
+### La vérification, telle qu'elle est faite
+
+Les findings **s'affichent avant d'être vérifiés**, puis les verdicts les
+amendent : un rejet retire la carte, un ajustement déplace sa priorité et sa
+confiance, une confirmation la marque comme vérifiée. C'est ce qui permet de
+faire relire une revue sans rien payer sur le temps du premier résultat — il
+reste à quatre secondes.
+
+La passe tourne donc **après** les contrôles plutôt qu'entre eux. C'est une
+vague de plus sur le total (~5 s) et zéro sur la latence perçue ; le vrai
+pipeline, qui vérifierait lot par lot, demanderait de fusionner deux flux
+asynchrones pour gagner ces cinq secondes. Le lot F dira si elles valent cette
+complexité.
+
+Trois règles :
+
+- **Le critique ne voit jamais le raisonnement du premier relecteur**, seulement
+  la phrase et la revendication. Montré le raisonnement, il approuve par
+  mimétisme.
+- **Il tourne sur le petit palier.** Juger une revendication contre sa phrase est
+  une tâche plus étroite que la formuler, et un critique plus cher que le
+  relecteur qu'il contrôle ne survivrait pas à la première facture.
+- **Les findings déterministes ne lui sont pas soumis.** Un terme apparaît dans
+  une page ou n'y apparaît pas ; payer un modèle pour confirmer une comparaison
+  de chaînes serait absurde.
+
+Un candidat sans verdict n'est **pas** supprimé : un critique laconique ne doit
+pas effacer silencieusement des findings. Et la revue publie son **taux de
+rejet** — un critique à 0 % est un critique à éteindre, encore faut-il pouvoir
+le voir.
 
 ### Ce que « cohérence » veut dire, précisément
 

@@ -13,7 +13,14 @@ import { eventStream } from '../../../lib/sse.js';
 import { runPool } from '../../../lib/checks/pool.js';
 import { planTasks, taskCountByEngine } from '../../../lib/checks/planner.js';
 import { checkById } from '../../../lib/checks/registry.js';
-import { runTask } from '../../../lib/checks/runner.js';
+import { runCritic, runTask } from '../../../lib/checks/runner.js';
+import {
+  DEFAULT_POLICY,
+  applyVerdicts,
+  batchCandidates,
+  dropRate,
+  toVerify,
+} from '../../../lib/checks/critic.js';
 import { documentSentences } from '../../../lib/checks/sentences.js';
 import { requireSession, unauthorised } from '../../../lib/session.js';
 
@@ -53,6 +60,7 @@ export async function POST(request) {
         glossary: body.glossary ?? [],
         requirements: body.requirements ?? [],
       },
+      policy: body.criticPolicy ?? DEFAULT_POLICY,
       signal: request.signal,
     })
   );
@@ -61,7 +69,7 @@ export async function POST(request) {
 async function* review(tasks, context) {
   yield ['plan', { tasks, byEngine: taskCountByEngine(tasks) }];
 
-  const findings = [];
+  const candidates = [];
   // Kept per tier: the two models' tokens do not cost the same, so a single
   // total could not be turned back into a price.
   const usage = {};
@@ -76,9 +84,17 @@ async function* review(tasks, context) {
       continue;
     }
 
-    for (const finding of outcome.value.findings) {
-      findings.push(finding);
-      yield ['finding', { task: outcome.task.id, finding }];
+    for (const [index, finding] of outcome.value.findings.entries()) {
+      // A reference the verdict can name later: the finding is shown now,
+      // before it is verified, so nobody waits on the critic to see results.
+      const stamped = {
+        ...finding,
+        ref: `${outcome.task.id}#${index}`,
+        check: outcome.task.check,
+        verified: false,
+      };
+      candidates.push(stamped);
+      yield ['finding', { task: outcome.task.id, finding: stamped }];
     }
     const tier = checkById(outcome.task.check)?.model ?? 'main';
     const bucket = (usage[tier] ??= {
@@ -93,5 +109,60 @@ async function* review(tasks, context) {
     yield ['done', { task: outcome.task.id, count: outcome.value.findings.length }];
   }
 
-  yield ['end', { findings: findings.length, usage }];
+  // Verification. It runs after the checks rather than between them, which
+  // costs one extra wave on the total and nothing at all on the time to first
+  // finding — the cards are already on screen, the verdicts amend them.
+  const pending = toVerify(candidates, context.policy);
+  let decisions = [];
+
+  if (pending.length) {
+    const batches = batchCandidates(pending).map((batch, index) => ({
+      id: `critic:${index}`,
+      check: 'critic',
+      batch,
+    }));
+
+    const sentenceOf = (id) =>
+      context.sentences.find((sentence) => sentence.id === id)?.text;
+
+    for await (const outcome of runPool(
+      batches,
+      (task) => runCritic(task.batch, { sentenceOf, signal: context.signal }),
+      { concurrency: CONCURRENCY }
+    )) {
+      if (outcome.error) {
+        if (outcome.error.name === 'AbortError') return;
+        // Verification failing leaves the findings as they are: unverified is
+        // a state the interface knows how to show, a missing review is not.
+        yield ['error', { task: outcome.task.id, message: outcome.error.message }];
+        continue;
+      }
+
+      const batchDecisions = applyVerdicts(outcome.task.batch, outcome.value.verdicts);
+      decisions = decisions.concat(batchDecisions);
+      for (const decision of batchDecisions) yield ['verdict', decision];
+
+      const bucket = (usage.fast ??= {
+        inputTokens: 0,
+        outputTokens: 0,
+        cachedInputTokens: 0,
+      });
+      bucket.inputTokens += outcome.value.usage.inputTokens;
+      bucket.outputTokens += outcome.value.usage.outputTokens;
+      bucket.cachedInputTokens += outcome.value.usage.cachedInputTokens;
+    }
+  }
+
+  yield [
+    'end',
+    {
+      findings: candidates.length,
+      usage,
+      // A critic that never rejects anything is a critic to switch off; the
+      // only way to notice is to publish the figure.
+      verification: pending.length
+        ? { checked: pending.length, dropRate: dropRate(decisions) }
+        : null,
+    },
+  ];
 }

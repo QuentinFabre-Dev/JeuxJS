@@ -267,6 +267,13 @@ export const normaliseFinding = (raw, { sentenceIndex, skills, customChecks }) =
     id: uid(),
     page: sentence.page,
     sentenceId: String(raw.id).trim(),
+    // Provenance: which check produced this, on which engine, and whether the
+    // critic has ruled on it. A finding the reader can trace is a finding the
+    // reader can argue with.
+    ...(raw.check && { check: raw.check }),
+    ...(raw.engine && { engine: raw.engine }),
+    ...(raw.ref && { ref: raw.ref }),
+    ...(raw.verified !== undefined && { verified: raw.verified === true }),
     original: sentence.text,
     ...(sentence.rects && { rects: sentence.rects }),
     suggestion,

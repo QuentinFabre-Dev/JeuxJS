@@ -26,6 +26,13 @@ import { planTasks, taskCountByEngine } from '../lib/checks/planner.js';
 import { estimateReview, formatCost, formatDuration } from '../lib/checks/estimate.js';
 import { checksForSkills } from '../lib/checks/registry.js';
 import { runLocalChecks, splitRequirements } from '../lib/checks/local/index.js';
+import {
+  applyVerdicts,
+  batchCandidates,
+  dropRate,
+  formatCandidates,
+  toVerify,
+} from '../lib/checks/critic.js';
 import { actualCost } from '../lib/checks/estimate.js';
 import { render, formatSentences } from '../lib/checks/prompt.js';
 import { buildRequest, sentencesForTask } from '../lib/checks/runner.js';
@@ -546,6 +553,48 @@ eq(
     Number((0.0125 + 0.00125 + 0.05 + 0.003125 + 0.008).toFixed(4))
   );
   eq('rien à facturer sans consommation', actualCost({}).dollars, 0);
+}
+
+// ── vérification ────────────────────────────────────────────
+{
+  const candidates = [
+    { ref: 'a', id: 'p1s1', skill: 'clarity', confidence: 0.95, priority: 'low', suggestion: 'A.', explanation: 'x' },
+    { ref: 'b', id: 'p1s2', skill: 'clarity', confidence: 0.6, priority: 'low', suggestion: 'B.', explanation: 'y' },
+    { ref: 'c', id: 'p1s3', skill: 'spelling', confidence: 0.99, priority: 'high', suggestion: 'C.', explanation: 'z' },
+  ];
+
+  eq('politique off : rien n’est vérifié', toVerify(candidates, 'off').length, 0);
+  eq(
+    'politique uncertain : les calls douteux et tout ce qui est high',
+    toVerify(candidates, 'uncertain').map((c) => c.ref),
+    ['b', 'c']
+  );
+  eq('politique all : tout', toVerify(candidates, 'all').length, 3);
+  eq('une politique inconnue retombe sur le défaut', toVerify(candidates, 'inventée').length, 2);
+  eq('les candidats partent par paquets', batchCandidates(candidates, 2).map((b) => b.length), [2, 1]);
+
+  ok(
+    'le critique voit la phrase et la revendication, jamais le raisonnement',
+    (() => {
+      const shown = formatCandidates([candidates[0]], () => 'La phrase originale.');
+      return shown.includes('La phrase originale.') && shown.includes('[c0]') && !shown.includes('0.95');
+    })()
+  );
+
+  const decisions = applyVerdicts(candidates, [
+    { id: 'c0', verdict: 'drop', priority: 'low', confidence: 0.1, reason: 'faux positif' },
+    { id: 'c1', verdict: 'adjust', priority: 'high', confidence: 0.9, reason: 'plus grave' },
+  ]);
+  eq('un rejet remonte comme tel', decisions[0].verdict, 'drop');
+  eq('un ajustement porte la nouvelle priorité', [decisions[1].verdict, decisions[1].priority], ['adjust', 'high']);
+  eq('et garde la confiance d’avant, pour montrer ce qui a bougé', decisions[1].confidenceBefore, 0.6);
+  eq(
+    'un candidat sans verdict n’est pas supprimé : un critique laconique ne doit pas effacer',
+    decisions[2].verdict,
+    'unverified'
+  );
+  eq('le taux de rejet est publié', Math.round(dropRate(decisions) * 100), 33);
+  eq('un critique qui ne rejette jamais se voit tout de suite', dropRate([{ verdict: 'keep' }]), 0);
 }
 
 // ── session ─────────────────────────────────────────────────

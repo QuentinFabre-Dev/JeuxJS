@@ -56,6 +56,8 @@ export default function App() {
   const [language, setLanguage] = useState('auto');
   const [detectedLanguage, setDetectedLanguage] = useState(null);
   const [playbooks, setPlaybooks] = useState(loadPlaybooks);
+  // 'off' | 'uncertain' | 'all' — how much of the review gets a second look.
+  const [criticPolicy, setCriticPolicy] = useState('uncertain');
 
   const [documentModel, setDocumentModel] = useState(null);
   const [isParsing, setIsParsing] = useState(false);
@@ -293,6 +295,33 @@ export default function App() {
 
     const onFinding = (finding) => setFindings((prev) => [...prev, finding]);
 
+    /**
+     * The critic ruled on a finding already on screen: a `drop` removes the
+     * card, an `adjust` moves its priority and confidence, a `keep` stamps it
+     * as verified. Showing findings before verification is what keeps the
+     * first result at four seconds instead of twenty.
+     */
+    const applyVerdict = (decision) =>
+      setFindings((prev) =>
+        prev.flatMap((finding) => {
+          if (finding.ref !== decision.ref) return [finding];
+          if (decision.verdict === 'drop') return [];
+          if (decision.verdict === 'adjust') {
+            return [
+              {
+                ...finding,
+                verified: true,
+                verdict: 'adjust',
+                priority: decision.priority ?? finding.priority,
+                confidence: decision.confidence ?? finding.confidence,
+                confidenceBefore: decision.confidenceBefore,
+              },
+            ];
+          }
+          return [{ ...finding, verified: decision.verdict === 'keep', verdict: decision.verdict }];
+        })
+      );
+
     try {
       if (isDemoEngine) {
         await runMockAnalysis({
@@ -316,8 +345,10 @@ export default function App() {
           docType,
           serviceLine,
           language: effectiveLanguage,
+          criticPolicy,
           signal: controller.signal,
           onFinding,
+          onVerdict: applyVerdict,
           onProgress: setProgress,
           onCheckError: (message) =>
             setIssue({ message: 'A check could not run.', hint: message }),
@@ -580,6 +611,8 @@ export default function App() {
                   onSavePlaybook={handleSavePlaybook}
                   onDeletePlaybook={handleDeletePlaybook}
                   pageCount={documentModel?.pages?.length ?? 0}
+                  criticPolicy={criticPolicy}
+                  onCriticPolicyChange={setCriticPolicy}
                 />
 
                 <button

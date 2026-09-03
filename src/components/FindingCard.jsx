@@ -1,4 +1,4 @@
-import { ArrowRight, FileText, ScanText } from 'lucide-react';
+import { ArrowRight, FileText, ScanText, ShieldCheck, Zap } from 'lucide-react';
 import { PRIORITIES, SKILL_STYLES, SKILLS } from '../data/constants.js';
 import { REVIEW_STATES } from '../data/review.js';
 import ReviewActions from './ReviewActions.jsx';
@@ -82,6 +82,28 @@ export default function FindingCard({
             >
               <ScanText className="h-3 w-3" />
               OCR
+            </span>
+          )}
+          {finding.engine === 'local' && (
+            <span
+              className="chip bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200"
+              title="Found by a deterministic check, in this browser: no model, no cost, same answer every time"
+            >
+              <Zap className="h-3 w-3" />
+              Deterministic
+            </span>
+          )}
+          {finding.verdict === 'adjust' && (
+            <span
+              className="chip bg-violet-50 text-violet-700 ring-1 ring-violet-200"
+              title={
+                finding.confidenceBefore
+                  ? `A second pass revised this: confidence was ${Math.round(finding.confidenceBefore * 100)}%`
+                  : 'A second pass revised this finding'
+              }
+            >
+              <ShieldCheck className="h-3 w-3" />
+              Revised
             </span>
           )}
           {isTriaged && (

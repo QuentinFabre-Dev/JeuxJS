@@ -43,7 +43,9 @@ export const runCloudReview = async ({
   serviceLine,
   language,
   signal,
+  criticPolicy,
   onFinding,
+  onVerdict,
   onProgress,
   onCheckError,
 }) => {
@@ -92,7 +94,10 @@ export const runCloudReview = async ({
       glossary,
       requirements: pattern,
     })) {
-      emit(raw);
+      // Deterministic findings are not sent to the critic: a term either
+      // appears on a page or it does not, and paying a model to confirm a
+      // string comparison would be absurd.
+      emit({ ...raw, check: id, engine: 'local', verified: true });
     }
     advance(checkById(id)?.label);
   }
@@ -113,9 +118,11 @@ export const runCloudReview = async ({
       // Requirements settled by a search were handled above; sending them to
       // the model would produce the same finding twice.
       requirements: semantic,
+      criticPolicy,
     },
     {
-      onFinding: emit,
+      onFinding: (raw) => emit({ ...raw, engine: 'llm' }),
+      onVerdict,
       onDone: (taskId) => advance(checkById(taskId.split(':')[0])?.label),
       onError: (message, taskId) => {
         advance();

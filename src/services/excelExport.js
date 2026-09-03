@@ -8,6 +8,9 @@
 
 import { PRIORITIES, SKILLS } from '../data/constants.js';
 import { REVIEW_STATES, statusLabel } from '../data/review.js';
+import { CHECKS } from '../../lib/checks/registry.js';
+
+const CHECK_LABELS = Object.fromEntries(CHECKS.map((check) => [check.id, check.label]));
 
 const COLORS = {
   brand: 'FF1E3A8A',
@@ -92,6 +95,11 @@ const addFindingsSheet = (workbook, { findings, states }) => {
     { header: 'Type', key: 'type', width: 16 },
     { header: 'Priority', key: 'priority', width: 10 },
     { header: 'Confidence', key: 'confidence', width: 11 },
+    // Provenance: what found this, and whether a second pass ruled on it. A
+    // reviewer arguing with a finding should not have to guess where it came
+    // from.
+    { header: 'Found by', key: 'check', width: 18 },
+    { header: 'Verified', key: 'verified', width: 12 },
     { header: 'Status', key: 'status', width: 12 },
     { header: 'Original', key: 'original', width: 52 },
     { header: 'Suggestion', key: 'suggestion', width: 52 },
@@ -109,6 +117,8 @@ const addFindingsSheet = (workbook, { findings, states }) => {
       type: skillLabel(finding),
       priority: PRIORITIES[finding.priority]?.label ?? finding.priority,
       confidence: Math.round(finding.confidence * 100) / 100,
+      check: checkLabel(finding),
+      verified: verificationLabel(finding),
       status: statusLabel(state),
       original: finding.original,
       suggestion: finding.suggestion,

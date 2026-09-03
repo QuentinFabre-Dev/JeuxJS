@@ -52,6 +52,9 @@ export const streamReview = async (request, handlers = {}, signal) => {
         case 'finding':
           handlers.onFinding?.(parsed.data.finding, parsed.data.task);
           break;
+        case 'verdict':
+          handlers.onVerdict?.(parsed.data);
+          break;
         case 'done':
           handlers.onDone?.(parsed.data.task, parsed.data.count);
           break;
