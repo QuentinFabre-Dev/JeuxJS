@@ -75,6 +75,7 @@ export const rewritePart = (xml, edits, { textTag, paragraphTag, dom } = {}) => 
   const applied = [];
   const done = new Set();
   const skipped = [];
+  const lengthened = [];
   let touched = false;
 
   for (const edit of edits) {
@@ -87,9 +88,19 @@ export const rewritePart = (xml, edits, { textTag, paragraphTag, dom } = {}) => 
       continue;
     }
 
-    const covered = state.segments.filter(
-      (segment) => segment.end > span.start && segment.start < span.end
-    );
+    // A pure insertion — a missing full stop, an added word — has no width, so
+    // no node strictly contains it. It attaches to the node that ends where it
+    // starts, which is where the character belongs. Filtering it like a
+    // replacement refused it outright, and the real-document check is what
+    // surfaced that.
+    const covered =
+      span.start === span.end
+        ? state.segments
+            .filter((segment) => segment.start <= span.start && span.start <= segment.end)
+            .slice(-1)
+        : state.segments.filter(
+            (segment) => segment.end > span.start && segment.start < span.end
+          );
 
     // The change straddles a paragraph break, which no edit to a text node can
     // express: a paragraph mark is structure, not characters. Reported rather
@@ -115,6 +126,11 @@ export const rewritePart = (xml, edits, { textTag, paragraphTag, dom } = {}) => 
       preserveSpace(segment.node, textTag);
     });
 
+    // Word reflows on its own; PowerPoint does not, so callers that care need
+    // to know a correction made the text longer.
+    const grew = span.replacement.length - (span.end - span.start);
+    if (grew > 0) lengthened.push({ sentenceId: edit.sentenceId, ids: edit.ids, grew });
+
     applied.push(...edit.ids);
     done.add(edit.sentenceId);
     touched = true;
@@ -127,5 +143,6 @@ export const rewritePart = (xml, edits, { textTag, paragraphTag, dom } = {}) => 
     applied,
     done,
     skipped,
+    lengthened,
   };
 };

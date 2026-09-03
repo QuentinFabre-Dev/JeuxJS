@@ -7,9 +7,11 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "test": "node tests/unit.mjs && node tests/rewrite-docx.mjs",
+    "test": "node tests/unit.mjs && node tests/rewrite-docx.mjs && node tests/rewrite-pptx.mjs",
     "sync:assets": "node scripts/sync-assets.mjs",
-    "bench": "node scripts/bench.mjs"
+    "bench": "node scripts/bench.mjs",
+    "check:rewrite": "node scripts/rewrite-check.mjs",
+    "build:samples": "node scripts/build-samples.mjs"
   },
   "dependencies": {
     "@fontsource/inter": "^5.3.0",
@@ -28,6 +30,7 @@
   "devDependencies": {
     "@xmldom/xmldom": "^0.8.14",
     "autoprefixer": "^10.4.20",
+    "docx": "^9.7.1",
     "postcss": "^8.4.47",
     "tailwindcss": "^3.4.14"
   },

@@ -1,9 +1,14 @@
 /**
  * The sample deliverable and its statement of work.
  *
- * They are served as real files and go through the normal upload path — the
- * same parser, the same anchors, the same checks. A demo that bypassed the
- * pipeline would demonstrate the pipeline working when it does not.
+ * They are real Word files, not approximations: `.docx` is the format this
+ * tool meets every working day, and a sample that does not look like real work
+ * demonstrates nothing. They are served as files and go through the normal
+ * upload path — the same parser, the same anchors, the same checks, the same
+ * regeneration. A demo that bypassed the pipeline would demonstrate a pipeline
+ * working when it does not.
+ *
+ * `npm run build:samples` rebuilds them from `scripts/build-samples.mjs`.
  *
  * The pair is written to exercise the whole product: the deliverable carries a
  * misspelling, an agreement error, a sentence nobody reads twice by choice, an
@@ -13,13 +18,13 @@
  */
 export const SAMPLES = {
   document: {
-    path: '/samples/rapport-exemple.md',
-    name: 'rapport-exemple.md',
+    path: '/samples/rapport-exemple.docx',
+    name: 'rapport-exemple.docx',
     label: 'Audit de sécurité — Northwind (exemple)',
   },
   sow: {
-    path: '/samples/sow-exemple.md',
-    name: 'sow-exemple.md',
+    path: '/samples/sow-exemple.docx',
+    name: 'sow-exemple.docx',
     label: 'SoW Northwind (exemple)',
   },
 };
@@ -34,5 +39,7 @@ export const loadSample = async (key) => {
     throw new Error("L'exemple n'a pas pu être chargé.");
   }
 
-  return new File([await response.blob()], sample.name, { type: 'text/markdown' });
+  return new File([await response.blob()], sample.name, {
+    type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  });
 };

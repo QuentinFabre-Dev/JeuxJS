@@ -12,6 +12,7 @@
 import { REVIEW_STATES, stateOf } from '../../data/review.js';
 import { mergeCorrections } from './merge.js';
 import { rewriteDocx } from './docx.js';
+import { rewritePptx } from './pptx.js';
 import { rewriteText } from './text.js';
 
 const REVIEWED = '_RyderReviewed';
@@ -23,13 +24,12 @@ export const reviewedName = (name) => {
   return `${name.slice(0, dot)}${REVIEWED}${name.slice(dot)}`;
 };
 
-/** Formats this can rewrite today. PowerPoint arrives in the next batch. */
-export const REWRITABLE = ['text', 'docx'];
+/** Formats this can rewrite. */
+export const REWRITABLE = ['text', 'docx', 'pptx'];
 
 /** Why a format is refused, in the words the reader needs. */
 export const REFUSAL = {
   pdf: 'A PDF positions its text character by character: correcting a word would shift everything after it on the line. Not supported.',
-  pptx: 'PowerPoint decks are coming in the next batch.',
 };
 
 export const canRewrite = (documentModel) => REWRITABLE.includes(documentModel?.kind);
@@ -84,9 +84,8 @@ const applyToFile = async ({ file, documentModel, edits }) => {
   }
 
   if (documentModel.kind === 'pptx') {
-    // PowerPoint arrives in the next batch. Refusing loudly beats handing back
-    // a deck that quietly kept its mistakes.
-    throw new Error('La régénération des fichiers PPTX arrive au prochain lot.');
+    const bytes = documentModel.source?.bytes ?? (await file.arrayBuffer());
+    return rewritePptx(bytes, edits);
   }
 
   const raw = await file.text();
@@ -119,6 +118,7 @@ export const rewriteDocument = async ({ file, documentModel, findings, states })
       // three-quarters corrected is worse than one nobody touched.
       notFound: result.notFound,
       skipped: result.skipped ?? [],
+      grown: result.grown ?? [],
       conflicts,
     },
   };

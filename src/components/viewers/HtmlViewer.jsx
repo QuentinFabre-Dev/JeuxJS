@@ -83,24 +83,39 @@ export default function HtmlViewer({
       parent.normalize();
     }
 
-    const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
-    const nodes = [];
-    let text = '';
-    while (walker.nextNode()) {
-      const node = walker.currentNode;
-      nodes.push({ node, start: text.length, end: text.length + node.length });
-      text += node.textContent;
-    }
-    const haystack = text.toLowerCase();
+    /**
+     * The text of the page, with a map back to the node each character sits
+     * in. Wrapping a sentence in a <mark> splits text nodes, so this has to be
+     * rebuilt after every highlight: reading a stale map put an offset past
+     * the end of a node it no longer described, and the resulting IndexSizeError
+     * took the whole page down rather than losing one highlight.
+     */
+    const readNodes = () => {
+      const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+      const entries = [];
+      let text = '';
+      while (walker.nextNode()) {
+        const node = walker.currentNode;
+        entries.push({ node, start: text.length, end: text.length + node.length });
+        text += node.textContent;
+      }
+      return { entries, haystack: text.toLowerCase() };
+    };
+
+    let map = readNodes();
 
     for (const finding of findings) {
-      const at = haystack.indexOf(finding.original.toLowerCase());
+      const at = map.haystack.indexOf(finding.original.toLowerCase());
       if (at === -1) continue;
       const end = at + finding.original.length;
 
-      const startNode = nodes.find((entry) => entry.start <= at && entry.end > at);
-      const endNode = nodes.find((entry) => entry.start < end && entry.end >= end);
+      const startNode = map.entries.find((entry) => entry.start <= at && entry.end > at);
+      const endNode = map.entries.find((entry) => entry.start < end && entry.end >= end);
       if (!startNode || !endNode) continue;
+      // Belt and braces: an offset outside its node means the map drifted, and
+      // a missing highlight is always better than a blank page.
+      if (at - startNode.start > startNode.node.length) continue;
+      if (end - endNode.start > endNode.node.length) continue;
 
       const range = document.createRange();
       range.setStart(startNode.node, at - startNode.start);
@@ -118,6 +133,7 @@ export default function HtmlViewer({
         // Fails when the range crosses element boundaries unevenly; those
         // sentences simply stay unhighlighted rather than corrupting the DOM.
         range.surroundContents(mark);
+        map = readNodes();
       } catch {
         continue;
       }

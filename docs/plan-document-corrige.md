@@ -174,11 +174,36 @@ n'existe.
 | --- | --- | --- |
 | **1** ✔ | Octets d'origine conservés (DOCX, PPTX) ; `span.js`, `merge.js`, `locate.js`, `text.js` avec leurs tests ; TXT/MD de bout en bout ; bouton, compteur, rapport | *fait* |
 | **2** ✔ | **DOCX** : carte d'offsets des runs, application, parties annexes (en-têtes, pieds de page, notes), chaînage multi-corrections, aller-retour testé | *fait* |
-| **3** | **PPTX** : nœuds `<a:t>`, détection de débordement, avertissement | ~1,5 j |
-| **4** | Banc de non-régression : corpus de vrais documents, chaque fichier produit rouvert et comparé | ~1 j |
+| **3** ✔ | **PPTX** : nœuds `<a:t>`, diapositives rallongées nommées, aller-retour testé | *fait* |
+| **4** ✔ | `npm run check:rewrite -- <fichier>` : prend un document réel, y applique une correction d'épreuve par phrase, réécrit, rouvre et vérifie que rien d'autre n'a bougé | *fait* |
 | **5** | *(optionnel)* Suivi des modifications Word en case à cocher | ~2 j |
 
-**≈ 6,5 jours** pour les quatre premiers, 8,5 avec les révisions Word.
+**Les quatre premiers lots sont livrés.** Reste le suivi des modifications
+Word, ≈ 2 j, si tu le veux.
+
+### Ce que les lots 3 et 4 ont appris
+
+**Le corpus, c'est le tien.** Les fichiers d'épreuve du dépôt reproduisent ce
+qu'on *sait* qui casse ; Word, Google Docs et LibreOffice découpent leurs runs
+différemment, et c'est là que ce code se fissure. D'où
+`npm run check:rewrite -- mon-rapport.docx` : il applique une correction
+d'épreuve à chacune des premières phrases d'un document réel, réécrit, rouvre,
+et vérifie que le document débarrassé de ces marques est exactement l'original.
+Rien ne sort de la machine.
+
+**Il a immédiatement trouvé un défaut.** Une correction qui **ajoute** du texte
+— un point final manquant, un mot oublié — était refusée. Un ajout n'a pas de
+largeur, donc aucun nœud ne le contient strictement, et le filtre écrit pour
+les remplacements le rejetait. Il s'attache désormais au nœud qui se termine là
+où il commence. Aucun test unitaire ne l'avait vu ; un document réel, si.
+
+**Et l'exemple Word en a révélé un autre, plus grave.** Le visualiseur
+surlignait les phrases à l'aide d'une carte de nœuds construite une fois pour
+toutes — or entourer une phrase d'un `<mark>` scinde les nœuds de texte. Au
+deuxième surlignage, un offset tombait hors du nœud qu'il décrivait, et
+l'`IndexSizeError` **emportait toute la page**. Exactement la même erreur que
+le décalage d'un caractère du lot 2 : une carte relue après chaque mutation la
+corrige, et un garde-fou fait perdre un surlignage plutôt qu'une page.
 
 ## Vérification
 

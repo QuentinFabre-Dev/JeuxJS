@@ -95,7 +95,7 @@ than the problem.
 ## Reviewing a document
 
 0. **No file at hand? Use the sample.** The upload zone offers *Try a sample
-   report* — a short security audit deliverable with mistakes planted in it
+   report* — a real Word deliverable with mistakes planted in it
    (a misspelling, an agreement error, an acronym used before it is defined,
    one amount written two ways, two date formats). The statement-of-work panel
    offers the matching contract, which the sample deliverable breaks in three

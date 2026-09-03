@@ -113,6 +113,13 @@ export default function RewriteButton({ file, documentModel, findings, states })
             {report.applied} correction{report.applied > 1 ? 's' : ''} applied
             across {report.sentences} sentence{report.sentences > 1 ? 's' : ''}.
           </p>
+          {report.grown?.length > 0 && (
+            <p className="mt-1.5 text-amber-700">
+              PowerPoint does not reflow: the text grew on slide
+              {report.grown.length > 1 ? 's' : ''} {report.grown.join(', ')}.
+              Check {report.grown.length > 1 ? 'they' : 'it'} still fits.
+            </p>
+          )}
           {report.skipped?.length > 0 && (
             <p className="mt-1.5 text-amber-700">
               {report.skipped.length} correction
