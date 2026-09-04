@@ -28,6 +28,7 @@ import { checksForSkills } from '../lib/checks/registry.js';
 import { runLocalChecks, splitRequirements } from '../lib/checks/local/index.js';
 import { PACKS, packFor, GENERIC_PACK } from '../lib/checks/domains/index.js';
 import { scoreFindings } from '../bench/score.js';
+import { buildWorkbookBlob } from '../src/services/excelExport.js';
 import { rateLimit, refuseOversized, resetRateLimits } from '../lib/limits.js';
 import { applySpans, changedSpan, overlaps } from '../src/services/rewrite/span.js';
 import { mergeCorrections } from '../src/services/rewrite/merge.js';
@@ -982,6 +983,32 @@ eq(
     [canRewrite({ kind: 'pdf' }), canRewrite({ kind: 'docx' }), canRewrite({ kind: 'text' })],
     [false, true, true]
   );
+}
+
+// ── export Excel ────────────────────────────────────────────
+{
+  // L'export a une fois cassé parce que deux colonnes ajoutées appelaient des
+  // fonctions qui n'existaient pas : un test qui le construit vraiment.
+  const findings = [
+    {
+      id: 'a', page: 1, sentenceId: 'p1s1', original: 'Deux montants divergent.',
+      advisory: true, explanation: 'À vérifier.', priority: 'high', confidence: 0.9,
+      skill: 'consistency', engine: 'local', check: 'figures',
+    },
+    {
+      id: 'b', page: 2, sentenceId: 'p2s1', original: 'Nous recomandons.',
+      suggestion: 'Nous recommandons.', explanation: 'Faute.', priority: 'low',
+      confidence: 0.95, skill: 'spelling', engine: 'llm', check: 'mechanical', verified: true,
+    },
+  ];
+
+  const blob = await buildWorkbookBlob({
+    findings,
+    states: new Map([['b', 'accepted']]),
+    meta: { fileName: 'rapport.docx', pages: 2 },
+    score: 80,
+  });
+  ok('le classeur se construit, findings consultatifs compris', blob.size > 5000);
 }
 
 // ── session ─────────────────────────────────────────────────

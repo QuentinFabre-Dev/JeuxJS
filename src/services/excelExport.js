@@ -84,6 +84,17 @@ const addSummarySheet = (workbook, { meta, findings, states, score }) => {
   return sheet;
 };
 
+/** "Spelling and grammar" — the check behind a finding, not its skill. */
+const checkLabel = (finding) => CHECK_LABELS[finding.check] ?? '—';
+
+/** Where a finding stands with the second pass, in one word. */
+const verificationLabel = (finding) => {
+  if (finding.engine === 'local') return 'Deterministic';
+  if (finding.verdict === 'adjust') return 'Adjusted';
+  if (finding.verified) return 'Confirmed';
+  return 'Not checked';
+};
+
 const addFindingsSheet = (workbook, { findings, states }) => {
   const sheet = workbook.addWorksheet('Findings', {
     views: [{ state: 'frozen', ySplit: 1 }],
@@ -121,7 +132,7 @@ const addFindingsSheet = (workbook, { findings, states }) => {
       verified: verificationLabel(finding),
       status: statusLabel(state),
       original: finding.original,
-      suggestion: finding.suggestion,
+      suggestion: finding.suggestion ?? '—',
       why: finding.explanation,
       comment: '',
     });
