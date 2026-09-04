@@ -78,27 +78,26 @@ export default function FindingCard({
               OCR
             </span>
           )}
+          {/* Provenance is worth knowing and rarely worth reading: a bare
+              icon that explains itself on hover, not another coloured pill
+              competing with the finding itself. */}
           {finding.engine === 'local' && (
-            <span
-              className="chip bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200"
+            <Zap
+              className="h-3 w-3 text-slate-400"
+              aria-label="Deterministic check"
               title="Found by a deterministic check, in this browser: no model, no cost, same answer every time"
-            >
-              <Zap className="h-3 w-3" />
-              Deterministic
-            </span>
+            />
           )}
           {finding.verdict === 'adjust' && (
-            <span
-              className="chip bg-violet-50 text-violet-700 ring-1 ring-violet-200"
+            <ShieldCheck
+              className="h-3 w-3 text-slate-400"
+              aria-label="Revised by a second pass"
               title={
                 finding.confidenceBefore
                   ? `A second pass revised this: confidence was ${Math.round(finding.confidenceBefore * 100)}%`
                   : 'A second pass revised this finding'
               }
-            >
-              <ShieldCheck className="h-3 w-3" />
-              Revised
-            </span>
+            />
           )}
           <span className="ml-auto text-[11px] text-slate-500 tabular-nums">
             Confidence ·{' '}
