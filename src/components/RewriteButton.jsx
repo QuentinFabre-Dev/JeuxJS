@@ -54,31 +54,33 @@ export default function RewriteButton({ file, documentModel, findings, states })
   };
 
   return (
-    <section className="card p-5">
-      <header className="flex items-center gap-2 mb-1">
-        <FileCheck2 className="h-4 w-4 text-brand-600" />
-        <h3 className="text-sm font-semibold text-slate-900">Corrected document</h3>
-      </header>
-      <p className="text-[11px] text-slate-400 mb-3">
-        Your file, in its own format and layout, with the corrections you
-        accepted — and nothing else.
-      </p>
-
-      <button
-        type="button"
-        onClick={download}
-        disabled={busy || !count || !supported}
-        className="btn-primary w-full !text-xs"
-      >
-        {busy ? (
-          <Loader2 className="h-3.5 w-3.5 animate-spin" />
-        ) : (
-          <Download className="h-3.5 w-3.5" strokeWidth={2.5} />
-        )}
-        {count
-          ? `Download with ${count} correction${count > 1 ? 's' : ''}`
-          : 'Accept a finding first'}
-      </button>
+    <section className="card p-4">
+      {/* One row: what it is on the left, the action sized to its own label on
+          the right. A full-width bar promised more than a download. */}
+      <div className="flex items-center gap-3">
+        <FileCheck2 className="h-4 w-4 shrink-0 text-brand-600" />
+        <div className="min-w-0 flex-1">
+          <p className="text-xs font-medium text-slate-900">Corrected document</p>
+          <p className="text-[11px] text-slate-400">
+            {count
+              ? `${count} accepted correction${count > 1 ? 's' : ''}, in your own file`
+              : 'Accept a finding to enable it'}
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={download}
+          disabled={busy || !count || !supported}
+          className="btn-primary shrink-0 !px-3 !py-1.5 !text-xs"
+        >
+          {busy ? (
+            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+          ) : (
+            <Download className="h-3.5 w-3.5" strokeWidth={2.5} />
+          )}
+          Download
+        </button>
+      </div>
 
       {!supported && (
         <p className="mt-2 text-[11px] text-amber-700">
