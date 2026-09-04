@@ -50,12 +50,6 @@ export default function FindingCard({
         isTriaged ? 'opacity-60' : '',
       ].join(' ')}
     >
-      {/* Priority rail */}
-      <span
-        className={`w-1 shrink-0 ${priority.bar}`}
-        aria-hidden
-      />
-
       <div className="flex-1 min-w-0 p-3.5">
         {/* Meta line */}
         <header className="flex flex-wrap items-center gap-2 mb-2">
@@ -104,17 +98,6 @@ export default function FindingCard({
             >
               <ShieldCheck className="h-3 w-3" />
               Revised
-            </span>
-          )}
-          {isTriaged && (
-            <span
-              className={`chip ${
-                isAccepted
-                  ? 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200'
-                  : 'bg-slate-100 text-slate-600 ring-1 ring-slate-200'
-              }`}
-            >
-              {isAccepted ? 'Accepted' : 'Rejected'}
             </span>
           )}
           <span className="ml-auto text-[11px] text-slate-500 tabular-nums">

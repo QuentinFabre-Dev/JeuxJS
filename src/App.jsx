@@ -593,6 +593,15 @@ export default function App() {
                   />
                 )}
 
+                {/* Right under the document it checks: a contract question is
+                    asked before the review, not scrolled to after it. */}
+                {documentModel && !isParsing && (
+                  <SowCheck
+                    documentModel={documentModel}
+                    language={effectiveLanguage}
+                  />
+                )}
+
                 {issueBanner}
 
                 <AnalysisConfig
@@ -617,14 +626,6 @@ export default function App() {
                   onCriticPolicyChange={setCriticPolicy}
                 />
 
-                {/* A separate question from quality, so a separate panel: does
-                    this deliverable honour what was signed? */}
-                {documentModel && (
-                  <SowCheck
-                    documentModel={documentModel}
-                    language={effectiveLanguage}
-                  />
-                )}
 
                 <button
                   type="button"

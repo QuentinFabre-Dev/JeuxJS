@@ -162,49 +162,44 @@ export default function SowCheck({ documentModel, language }) {
   const running = status === 'running';
 
   return (
-    <section className="card p-6">
-      <header className="flex items-center gap-2 mb-1">
-        <FileSignature className="h-4 w-4 text-brand-600" />
-        <h3 className="text-sm font-semibold text-slate-900">Statement of work</h3>
-      </header>
-      <p className="text-[11px] text-slate-400 mb-4">
-        Drop the signed SoW and check, commitment by commitment, whether this
-        deliverable honours it before it goes to the client.
-      </p>
-
+    <section className="card p-4">
       {!sowFile ? (
         <div
           {...getRootProps()}
           className={[
-            'rounded-xl border-2 border-dashed px-4 py-6 text-center cursor-pointer transition',
-            isDragActive
-              ? 'border-brand-500 bg-brand-50/60'
-              : 'border-slate-200 hover:border-brand-300 hover:bg-slate-50',
+            'flex items-center gap-3 rounded-lg px-1 py-0.5 cursor-pointer transition',
+            isDragActive ? 'bg-brand-50/60' : 'hover:bg-slate-50',
           ].join(' ')}
         >
           <input {...getInputProps()} />
-          <p className="text-xs font-medium text-slate-700">
-            {status === 'parsing' ? 'Reading…' : 'Drop the signed SoW'}
-          </p>
-          <p className="mt-1 text-[11px] text-slate-400">PDF, DOCX, TXT, MD</p>
-          <button
-            type="button"
-            onClick={(event) => {
-              event.stopPropagation();
-              useSample();
-            }}
-            className="mt-3 text-[11px] font-medium text-brand-600 hover:underline"
-          >
-            or use the sample SoW
-          </button>
+          <FileSignature className="h-4 w-4 shrink-0 text-slate-400" />
+          <div className="min-w-0 flex-1">
+            <p className="text-xs font-medium text-slate-800">
+              {status === 'parsing' ? 'Reading the SoW…' : 'Check against the signed SoW'}
+            </p>
+            <p className="text-[11px] text-slate-400">
+              Drop it here, or{' '}
+              <button
+                type="button"
+                onClick={(event) => {
+                  event.stopPropagation();
+                  useSample();
+                }}
+                className="font-medium text-brand-600 hover:underline"
+              >
+                use the sample
+              </button>
+            </p>
+          </div>
         </div>
       ) : (
         <div className="flex items-center gap-3">
+          <FileSignature className="h-4 w-4 shrink-0 text-brand-600" />
           <div className="flex-1 min-w-0">
             <p className="text-xs font-medium text-slate-900 truncate">{sowFile.name}</p>
             <p className="text-[11px] text-slate-500">
               {sowModel?.pages?.length ?? 0} page
-              {(sowModel?.pages?.length ?? 0) > 1 ? 's' : ''}
+              {(sowModel?.pages?.length ?? 0) > 1 ? 's' : ''} · signed statement of work
             </p>
           </div>
           <button
